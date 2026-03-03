@@ -13,6 +13,11 @@ import {
   Clock,
   Shield,
   TrendingUp,
+  TrendingDown,
+  Globe,
+  Lightbulb,
+  BarChart3,
+  RefreshCw,
   ArrowRight,
   ChevronDown,
   Loader2,
@@ -717,8 +722,10 @@ function ProbabilityBar({ label, value, color }) {
   );
 }
 
-// Page de résultats
+// Page de résultats avec XAI intégré et section Recommandation
 function ResultsPage({ result, onBack, onExplain, isLoading }) {
+  const [activeXaiTab, setActiveXaiTab] = useState('shap');
+  
   const getEvaluationColor = (evaluation) => {
     switch (evaluation) {
       case 'Bon': return 'text-green-400 bg-green-400/10 border-green-400/30';
@@ -737,9 +744,27 @@ function ResultsPage({ result, onBack, onExplain, isLoading }) {
     }
   };
 
+  // Calculer la position du ROI sur l'échelle (-50% à +50%)
+  const roiPercent = result.roi_percent || 0;
+  const roiPosition = Math.min(Math.max((roiPercent + 50) / 100 * 100, 0), 100);
+  
+  // Déterminer la couleur du gradient basé sur le ROI
+  const getRoiColor = () => {
+    if (roiPercent >= 25) return 'from-green-500 to-green-400';
+    if (roiPercent >= 15) return 'from-green-400 to-yellow-400';
+    if (roiPercent >= 5) return 'from-yellow-400 to-orange-400';
+    if (roiPercent >= 0) return 'from-orange-400 to-red-400';
+    return 'from-red-500 to-red-600';
+  };
+
+  // Données XAI
+  const xaiData = result.explanations;
+  const shapData = xaiData?.shap;
+  const limeData = xaiData?.lime;
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-serif font-bold mb-2">
@@ -809,7 +834,65 @@ function ResultsPage({ result, onBack, onExplain, isLoading }) {
             </div>
           </div>
 
-          {/* SUPPRESSION: Section Probabilités de classification supprimée */}
+          {/* NOUVELLE SECTION RECOMMANDATION - Visualisation du ROI */}
+          <div className="bg-[#0a0a0a] rounded-2xl p-6 mb-8 border border-white/5">
+            <div className="flex items-center gap-3 mb-6">
+              <BarChart3 size={20} className="text-amber-400" />
+              <h3 className="text-lg font-semibold">Visualisation du ROI</h3>
+            </div>
+            
+            {/* Barre de progression du ROI */}
+            <div className="relative mb-6">
+              {/* Barre de fond avec gradient */}
+              <div className="h-16 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-lg relative overflow-hidden">
+                {/* Masque pour ne montrer que jusqu'à la valeur actuelle */}
+                <div 
+                  className="absolute top-0 left-0 h-full bg-[#1a1a1a] opacity-90"
+                  style={{ width: `${100 - roiPosition}%`, right: 0, left: 'auto' }}
+                />
+                {/* Valeur actuelle */}
+                <div className="absolute top-0 left-0 h-full flex items-center px-4">
+                  <span className={`text-2xl font-bold ${roiPercent >= 0 ? 'text-white' : 'text-red-400'}`}>
+                    {roiPercent > 0 ? '+' : ''}{roiPercent.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+              
+              {/* Marqueurs de pourcentage */}
+              <div className="flex justify-between mt-2 text-xs text-gray-500 px-2">
+                <span>-50%</span>
+                <span>-25%</span>
+                <span>0%</span>
+                <span>+25%</span>
+                <span>+50%</span>
+              </div>
+            </div>
+
+            {/* Légende Perte/Gain */}
+            <div className="flex items-center justify-between mb-6">
+              <span className="text-sm text-gray-400">Perte potentielle</span>
+              <div className="flex-1 mx-4 h-2 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500" />
+              <span className="text-sm text-gray-400">Gain potentiel</span>
+            </div>
+
+            {/* Texte de recommandation */}
+            <div className="bg-[#111] rounded-xl p-6 border border-white/5">
+              <h4 className="text-lg font-serif font-semibold mb-3 text-white">Recommandation</h4>
+              <p className="text-gray-300 leading-relaxed text-sm">
+                {result.roi_percent >= 25 ? (
+                  "Cette montre présente un excellent profil d'investissement avec un ROI très positif attendu. Les caractéristiques techniques, la réputation de la marque et les conditions de marché actuelles soutiennent une valorisation future exceptionnelle. Recommandé fortement pour les investisseurs recherchant un actif stable et fortement valorisant."
+                ) : result.roi_percent >= 15 ? (
+                  "Cette montre présente un bon profil d'investissement avec un ROI positif attendu. Les caractéristiques techniques et la réputation de la marque soutiennent une valorisation future. Recommandé pour les investisseurs recherchant un actif stable et valorisant."
+                ) : result.roi_percent >= 5 ? (
+                  "Cette montre présente un profil d'investissement modéré. Le ROI attendu est positif mais limité. Convient aux investisseurs prudents ou souhaitant diversifier leur portefeuille avec un risque contrôlé."
+                ) : result.roi_percent >= 0 ? (
+                  "Cette montre présente un profil d'investissement incertain. Le ROI attendu est faiblement positif. L'investissement peut être considéré pour des raisons de collection plutôt que de spéculation financière."
+                ) : (
+                  "Cette montre présente un profil d'investissement défavorable avec un ROI négatif attendu. Les caractéristiques actuelles ne soutiennent pas une valorisation future positive. Déconseillé comme investissement financier."
+                )}
+              </p>
+            </div>
+          </div>
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-4">
@@ -819,64 +902,294 @@ function ResultsPage({ result, onBack, onExplain, isLoading }) {
             >
               Nouvelle analyse
             </button>
-            <button 
-              onClick={onExplain}
-              disabled={isLoading}
-              className="flex-1 py-3 px-6 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-semibold rounded-xl transition-all disabled:opacity-50"
-            >
-              {isLoading ? 'Chargement...' : 'Expliquer la prédiction (XAI)'}
-            </button>
+            {!xaiData && (
+              <button 
+                onClick={onExplain}
+                disabled={isLoading}
+                className="flex-1 py-3 px-6 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-semibold rounded-xl transition-all disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin inline mr-2" />
+                    Chargement...
+                  </>
+                ) : (
+                  <>
+                    <Activity size={20} className="inline mr-2" />
+                    Expliquer la prédiction (XAI)
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Explications XAI */}
-        {result.explanations && (
-          <div className="bg-[#111] rounded-2xl border border-white/10 p-8">
-            <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-              <Info size={24} className="text-amber-400" />
-              Explications (XAI)
-            </h3>
-            
-            {result.explanations.shap?.available && (
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold mb-3 text-green-400">SHAP - Importance globale</h4>
-                <div className="space-y-2">
-                  {result.explanations.shap.top_features?.map((feat, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 bg-[#1a1a1a] rounded-lg">
-                      <span className="w-8 h-8 flex items-center justify-center bg-amber-500/20 text-amber-400 rounded-full text-sm font-bold">
-                        {feat.rank}
-                      </span>
-                      <span className="flex-1">{feat.name}</span>
+        {/* SECTION XAI - Style comme vos captures */}
+        {xaiData && (
+          <div className="bg-[#111] rounded-2xl border border-white/10 overflow-hidden">
+            {/* Header XAI */}
+            <div className="p-6 border-b border-white/10 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                <Activity size={20} className="text-amber-400" />
+              </div>
+              <h3 className="text-xl font-bold">Explicabilité (XAI)</h3>
+            </div>
+
+            {/* Onglets SHAP / LIME */}
+            <div className="flex border-b border-white/10">
+              <button
+                onClick={() => setActiveXaiTab('shap')}
+                className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-medium transition-all ${
+                  activeXaiTab === 'shap'
+                    ? 'bg-[#c9a227]/20 text-[#c9a227] border-b-2 border-[#c9a227]'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Globe size={16} />
+                SHAP (Global)
+              </button>
+              <button
+                onClick={() => setActiveXaiTab('lime')}
+                className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-medium transition-all ${
+                  activeXaiTab === 'lime'
+                    ? 'bg-[#c9a227]/20 text-[#c9a227] border-b-2 border-[#c9a227]'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Lightbulb size={16} />
+                LIME (Local)
+              </button>
+            </div>
+
+            {/* Contenu SHAP */}
+            {activeXaiTab === 'shap' && shapData?.available && (
+              <div className="p-6">
+                {/* Titre et description */}
+                <div className="flex items-start gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                    <Activity size={16} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold mb-2">{shapData.title}</h4>
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                      {shapData.description}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Graphique SHAP */}
+                <div className="bg-[#0a0a0a] rounded-xl p-6 mb-6">
+                  <ShapChart data={shapData.chart_data} />
+                  
+                  {/* Légende */}
+                  <div className="flex items-center justify-center gap-6 mt-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      <span className="text-gray-400">{shapData.legend?.positive || "Augmente le prix"}</span>
                     </div>
-                  ))}
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <span className="text-gray-400">{shapData.legend?.negative || "Diminue le prix"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top Features */}
+                <div>
+                  <h5 className="text-sm font-semibold text-gray-400 mb-4 flex items-center gap-2">
+                    <BarChart3 size={16} />
+                    Caractéristiques les plus importantes
+                  </h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {shapData.top_features?.map((feat, idx) => (
+                      <div key={idx} className="flex items-center gap-3 p-3 bg-[#1a1a1a] rounded-lg border border-white/5">
+                        <span className="w-6 h-6 flex items-center justify-center bg-[#c9a227] text-black rounded-full text-xs font-bold">
+                          {feat.rank}
+                        </span>
+                        <span className="text-sm">{feat.name}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
 
-            {result.explanations.lime?.available && (
-              <div>
-                <h4 className="text-lg font-semibold mb-3 text-blue-400">LIME - Explication locale</h4>
-                <div className="space-y-2">
-                  {result.explanations.lime.contributions?.map((contrib, idx) => (
-                    <div key={idx} className={`p-3 rounded-lg flex items-center justify-between ${
-                      contrib.impact === 'favorable' ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'
-                    }`}>
-                      <div>
-                        <div className="font-medium">{contrib.feature}</div>
-                        <div className="text-sm text-gray-400">{contrib.description}</div>
-                      </div>
-                      <div className={`font-bold ${
-                        contrib.impact === 'favorable' ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {contrib.impact === 'favorable' ? '+' : '-'}{Math.round(contrib.contribution * 100)}%
-                      </div>
-                    </div>
-                  ))}
+            {/* Contenu LIME */}
+            {activeXaiTab === 'lime' && limeData?.available && (
+              <div className="p-6">
+                {/* Titre et description */}
+                <div className="flex items-start gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                    <Lightbulb size={16} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold mb-2">{limeData.title}</h4>
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                      {limeData.description}
+                    </p>
+                  </div>
                 </div>
+
+                {/* Graphique LIME */}
+                <div className="bg-[#0a0a0a] rounded-xl p-6 mb-6">
+                  <LimeChart data={limeData.chart_data} />
+                  
+                  {/* Légende */}
+                  <div className="flex items-center justify-center gap-6 mt-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      <span className="text-gray-400">{limeData.legend?.positive || "Favorise l'investissement"}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <span className="text-gray-400">{limeData.legend?.negative || "Défavorise l'investissement"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Détails des contributions */}
+                <div>
+                  <h5 className="text-sm font-semibold text-gray-400 mb-4 flex items-center gap-2">
+                    <Info size={16} />
+                    Détails des contributions
+                  </h5>
+                  <div className="space-y-3">
+                    {limeData.contributions?.map((contrib, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-xl border border-white/5">
+                        <div className="flex items-start gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            contrib.impact === 'favorable' ? 'bg-green-500/20' : 'bg-red-500/20'
+                          }`}>
+                            {contrib.impact === 'favorable' ? (
+                              <TrendingUp size={16} className="text-green-400" />
+                            ) : (
+                              <TrendingDown size={16} className="text-red-400" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium mb-1">
+                              {contrib.feature} {contrib.value && <span className="text-gray-400">{contrib.value}</span>}
+                            </div>
+                            <div className="text-sm text-gray-400">{contrib.description}</div>
+                          </div>
+                        </div>
+                        <div className={`font-mono font-bold ${
+                          contrib.impact === 'favorable' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {contrib.impact === 'favorable' ? '+' : ''}{contrib.raw_value?.toFixed(4) || contrib.contribution.toFixed(4)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bouton Nouvelle analyse */}
+                <div className="mt-8 flex justify-center">
+                  <button 
+                    onClick={onBack}
+                    className="flex items-center gap-2 px-6 py-3 bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white rounded-xl transition-colors border border-white/10"
+                  >
+                    <RefreshCw size={18} />
+                    Nouvelle analyse
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Erreurs */}
+            {activeXaiTab === 'shap' && !shapData?.available && (
+              <div className="p-8 text-center text-gray-400">
+                <AlertCircle size={48} className="mx-auto mb-4 text-red-400" />
+                <p>SHAP non disponible: {shapData?.error}</p>
+              </div>
+            )}
+            {activeXaiTab === 'lime' && !limeData?.available && (
+              <div className="p-8 text-center text-gray-400">
+                <AlertCircle size={48} className="mx-auto mb-4 text-red-400" />
+                <p>LIME non disponible: {limeData?.error}</p>
               </div>
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Composant pour le graphique SHAP (barres horizontales)
+function ShapChart({ data }) {
+  if (!data || data.length === 0) return null;
+  
+  const maxVal = Math.max(...data.map(d => Math.abs(d.value)));
+  
+  return (
+    <div className="space-y-2">
+      {data.map((item, idx) => {
+        const isPositive = item.value >= 0;
+        const width = (Math.abs(item.value) / maxVal) * 100;
+        
+        return (
+          <div key={idx} className="flex items-center gap-4">
+            <div className="w-32 text-right text-sm text-gray-400 truncate">{item.feature}</div>
+            <div className="flex-1 h-8 bg-[#1a1a1a] rounded relative overflow-hidden">
+              {/* Barre */}
+              <div 
+                className={`absolute top-0 h-full ${isPositive ? 'left-1/2' : 'right-1/2'}`}
+                style={{ 
+                  width: `${width / 2}%`,
+                  backgroundColor: item.color || (isPositive ? '#22c55e' : '#ef4444')
+                }}
+              />
+              {/* Ligne centrale */}
+              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/20" />
+            </div>
+            <div className="w-16 text-right text-sm font-mono">{item.value > 0 ? '+' : ''}{item.value.toFixed(2)}</div>
+          </div>
+        );
+      })}
+      {/* Axe X */}
+      <div className="flex justify-between text-xs text-gray-500 mt-2 px-[140px]">
+        <span>-{maxVal.toFixed(2)}</span>
+        <span>0.00</span>
+        <span>+{maxVal.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+}
+
+// Composant pour le graphique LIME (similaire)
+function LimeChart({ data }) {
+  if (!data || data.length === 0) return null;
+  
+  const maxVal = Math.max(...data.map(d => Math.abs(d.value)));
+  
+  return (
+    <div className="space-y-2">
+      {data.map((item, idx) => {
+        const isPositive = item.value >= 0;
+        const width = (Math.abs(item.value) / maxVal) * 100;
+        
+        return (
+          <div key={idx} className="flex items-center gap-4">
+            <div className="w-40 text-right text-sm text-gray-400 truncate">{item.feature}</div>
+            <div className="flex-1 h-8 bg-[#1a1a1a] rounded relative overflow-hidden">
+              <div 
+                className={`absolute top-0 h-full ${isPositive ? 'left-1/2' : 'right-1/2'}`}
+                style={{ 
+                  width: `${width / 2}%`,
+                  backgroundColor: item.color || (isPositive ? '#22c55e' : '#ef4444')
+                }}
+              />
+              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/20" />
+            </div>
+            <div className="w-16 text-right text-sm font-mono">{item.value > 0 ? '+' : ''}{item.value.toFixed(3)}</div>
+          </div>
+        );
+      })}
+      <div className="flex justify-between text-xs text-gray-500 mt-2 px-[180px]">
+        <span>-{maxVal.toFixed(3)}</span>
+        <span>0.000</span>
+        <span>+{maxVal.toFixed(3)}</span>
       </div>
     </div>
   );

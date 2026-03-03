@@ -460,7 +460,7 @@ def prepare_data(watch: CompleteWatchInput) -> pd.DataFrame:
         "seller_consistent": 1 if watch.montres_vendues >= watch.annonces_actives else 0,
         "price_anomaly_low": 0,
         "price_anomaly_high": 0,
-        "current_price_estimate": watch.prix_achat,
+        "current_price_estimate": watch.prix_achat ,
         "Brand": watch.marque.value,
         "Movement": watch.mouvement.value,
         "Case material": watch.materiau_boitier.value,
@@ -633,25 +633,18 @@ class XAIResponse(BaseModel):
 # ============================================================
 
 def generate_shap_explanation(X: pd.DataFrame, model) -> Dict[str, Any]:
-    """Génère l'explication SHAP"""
+    """Génère l'explication SHAP au format de vos captures"""
     if not SHAP_OK:
-        return {"error": "SHAP non disponible", "available": False}
+        return {"available": False, "error": "SHAP non disponible"}
     
     try:
         if model is None:
-            return {"error": "Modèle non chargé", "available": False}
+            return {"available": False, "error": "Modèle non chargé"}
         
-        # Extraire le vrai modèle si c'est un Pipeline
-        actual_model = model
-        if hasattr(model, 'named_steps'):
-            # C'est un Pipeline, prendre le dernier step
-            last_step_name = list(model.named_steps.keys())[-1]
-            actual_model = model.named_steps[last_step_name]
-        
-        # Mapping noms lisibles (défini au début)
+        # Mapping noms français
         feature_names_fr = {
             "Year of production": "Année",
-            "age": "Âge",
+            "age": "Âge", 
             "Face Area": "Surface",
             "Watches Sold by the Seller": "Ventes",
             "Active listing of the seller": "Annonces",
@@ -659,7 +652,7 @@ def generate_shap_explanation(X: pd.DataFrame, model) -> Dict[str, Any]:
             "seller_reputation_score": "Réputation",
             "scope_score": "Livraison",
             "Fast Shipper": "Expédition",
-            "Trusted Seller": "Confiance",
+            "Trusted Seller": "Vendeur de confiance",
             "Punctuality": "Ponctualité",
             "is_modern": "Moderne",
             "seller_consistent": "Cohérence",
@@ -680,208 +673,224 @@ def generate_shap_explanation(X: pd.DataFrame, model) -> Dict[str, Any]:
             "Bracelet color": "Couleur"
         }
         
-        # Convertir en numérique
-        X_numeric = X.copy()
-        for col in X_numeric.columns:
-            if X_numeric[col].dtype == 'object':
-                le = LabelEncoder()
-                X_numeric[col] = le.fit_transform(X_numeric[col].astype(str))
+        # Extraire le modèle final
+        actual_model = model
+        if hasattr(model, 'named_steps'):
+            last_step_name = list(model.named_steps.keys())[-1]
+            actual_model = model.named_steps[last_step_name]
+        
+        # Préprocessing si nécessaire
+        X_processed = X.copy()
+        if hasattr(model, 'named_steps') and 'preprocessing' in model.named_steps:
+            X_processed = model.named_steps['preprocessing'].transform(X)
+            if hasattr(X_processed, 'toarray'):
+                X_processed = X_processed.toarray()
         
         # TreeExplainer
-        try:
-            explainer = shap.TreeExplainer(actual_model)
-            shap_values = explainer.shap_values(X_numeric)
-        except Exception as tree_error:
-            # Fallback sur KernelExplainer
-            print(f"TreeExplainer failed: {tree_error}, using KernelExplainer")
-            explainer = shap.KernelExplainer(actual_model.predict, X_numeric.iloc[:5])
-            shap_values = explainer.shap_values(X_numeric.iloc[0:1])
+        explainer = shap.TreeExplainer(actual_model)
+        shap_values = explainer.shap_values(X_processed)
         
-        # Gérer shape des shap_values
         if isinstance(shap_values, list):
-            shap_values = shap_values[1] if len(shap_values) > 1 else shap_values[0]
-        
+            shap_values = shap_values[0]
         if len(shap_values.shape) > 1:
-            shap_values_instance = shap_values[0]
-        else:
-            shap_values_instance = shap_values
-        
-        # Créer features
-        features = []
-        for i, col in enumerate(X_numeric.columns):
-            if i < len(shap_values_instance):
-                val = float(shap_values_instance[i])
-                features.append({
+            shap_values = shap_values[0]
+            
+        # Créer les données du graphique
+        features_data = []
+        for i, col in enumerate(X.columns):
+            if i < len(shap_values):
+                val = float(shap_values[i])
+                features_data.append({
                     "name": feature_names_fr.get(col, col),
-                    "value": round(val, 4),
+                    "value": val,
                     "impact": "positive" if val > 0 else "negative"
                 })
         
-        # Trier
-        features.sort(key=lambda x: abs(x["value"]), reverse=True)
+        # Trier par valeur absolue
+        features_data.sort(key=lambda x: abs(x["value"]), reverse=True)
         
-        # Chart data
+        # Format pour le graphique (comme votre capture)
         chart_data = []
-        for f in features[:8]:
+        for f in features_data[:10]:  # Top 10
             chart_data.append({
                 "feature": f["name"],
-                "value": f["value"],
-                "color": "#22c55e" if f["impact"] == "positive" else "#ef4444"
+                "value": round(f["value"], 3),
+                "color": "#22c55e" if f["impact"] == "positive" else "#ef4444"  # Vert/Rouge
             })
+        
+        # Top 5 pour les cartes en dessous
+        top_features = [
+            {"rank": i+1, "name": f["name"]} 
+            for i, f in enumerate(features_data[:5])
+        ]
         
         return {
             "available": True,
-            "chart_type": "bar",
+            "type": "global",
             "title": "Importance des caractéristiques (SHAP)",
-            "description": "Impact de chaque caractéristique sur le prix prédit. Vert = augmente, Rouge = diminue.",
-            "data": chart_data,
-            "top_features": [
-                {"rank": i+1, "name": f["name"]} 
-                for i, f in enumerate(features[:5])
-            ]
+            "description": "Les valeurs SHAP montrent l'impact de chaque caractéristique sur la prédiction finale. Les valeurs positives (vert) augmentent le prix prédit, les négatives (rouge) le diminuent.",
+            "chart_data": chart_data,
+            "top_features": top_features,
+            "legend": {
+                "positive": "Augmente le prix",
+                "negative": "Diminue le prix"
+            }
         }
             
     except Exception as e:
-        import traceback
         print(f"SHAP Error: {str(e)}")
+        import traceback
         print(traceback.format_exc())
-        return {"error": str(e), "available": False}
+        return {"available": False, "error": str(e)}
 
 def generate_lime_explanation(X: pd.DataFrame, model, feature_names: List[str]) -> Dict[str, Any]:
-    """Génère l'explication LIME"""
+    """Génère l'explication LIME au format de vos captures"""
     if not LIME_OK:
-        return {"error": "LIME non disponible", "available": False}
+        return {"available": False, "error": "LIME non disponible"}
     
     try:
         if model is None or not hasattr(model, 'predict_proba'):
-            return {"error": "Modèle incompatible", "available": False}
+            return {"available": False, "error": "Modèle incompatible"}
         
-        # Mapping noms (défini AU DÉBUT)
-        feature_names_fr = {
-            "Year of production": "Année",
-            "Brand": "Marque",
-            "Condition": "État",
-            "current_price_estimate": "Prix",
-            "Trusted Seller": "Vendeur",
-            "Seller Reviews": "Avis",
-            "Movement": "Mouvement",
-            "Case material": "Matériau",
-            "age": "Âge",
-            "Face Area": "Surface"
-        }
-        
-        # Convertir en numérique
+        # Encoder les données
         X_numeric = X.copy()
+        label_encoders = {}
         categorical_features = []
-        categorical_names = {}
         
         for i, col in enumerate(X_numeric.columns):
             if X_numeric[col].dtype == 'object':
                 categorical_features.append(i)
                 le = LabelEncoder()
                 X_numeric[col] = le.fit_transform(X_numeric[col].astype(str))
-                categorical_names[i] = list(le.classes_)
-        
-        # Background data
-        background_data = X_numeric.values
-        
-        # Noms de features pour LIME
-        lime_feature_names = [feature_names_fr.get(f, f) for f in X_numeric.columns]
+                label_encoders[col] = le
         
         # Créer explainer
         explainer = LimeTabularExplainer(
-            training_data=background_data,
-            feature_names=lime_feature_names,
-            class_names=['Mauvais', 'Moyen', 'Bon'],
+            training_data=X_numeric.values,
+            feature_names=list(X.columns),
+            class_names=['Risqué', 'Moyen', 'Bon investissement'],
             mode='classification',
-            discretize_continuous=True,
-            categorical_features=categorical_features if categorical_features else None,
-            categorical_names=categorical_names if categorical_names else None,
-            verbose=False
+            discretize_continuous=False,
+            sample_around_instance=True,
+            random_state=42
         )
         
-        # Explication
-        def predict_proba_wrapper(x):
-            """Wrapper pour gérer les types"""
+        # Fonction de prédiction wrapper
+        def predict_fn(x):
             if isinstance(x, list):
                 x = np.array(x)
-            return model.predict_proba(x)
+            if len(x.shape) == 1:
+                x = x.reshape(1, -1)
+            
+            # Reconstruire DataFrame avec bon types
+            X_df = pd.DataFrame(x, columns=X.columns)
+            for col, le in label_encoders.items():
+                if col in X_df.columns:
+                    vals = X_df[col].astype(int)
+                    decoded = []
+                    for v in vals:
+                        if 0 <= v < len(le.classes_):
+                            decoded.append(le.classes_[v])
+                        else:
+                            decoded.append(le.classes_[0])
+                    X_df[col] = decoded
+            
+            return model.predict_proba(X_df)
         
+        # Générer explication
         exp = explainer.explain_instance(
-            X_numeric.values[0], 
-            predict_proba_wrapper, 
+            X_numeric.values[0],
+            predict_fn,
             num_features=6,
             top_labels=1
         )
         
-        # Récupérer explications
         label = exp.available_labels()[0]
         explanations = exp.as_list(label=label)
         
-        # Formater contributions
-        contributions = []
+        # Mapping pour les noms lisibles
+        feature_map = {
+            "Brand": "Marque",
+            "Condition": "État", 
+            "current_price_estimate": "Prix",
+            "Trusted Seller": "Vendeur de confiance",
+            "Seller Reviews": "Avis",
+            "Movement": "Mouvement",
+            "Case material": "Matériau",
+            "Year of production": "Année"
+        }
         
-        for feature, weight in explanations:
-            feature_str = str(feature)
+        # Parser les explications LIME
+        contributions = []
+        chart_data = []
+        
+        for feature_str, weight in explanations:
             weight_float = float(weight)
-            
-            # Parser
-            if '=' in feature_str:
-                parts = feature_str.split('=', 1)
-                feat_name = parts[0].strip()
-                feat_val = parts[1].strip()
-            else:
-                feat_name = feature_str
-                feat_val = ""
-            
             is_positive = weight_float > 0
             
-            # Descriptions
+            # Parser le feature string (ex: "Brand=Rolex")
+            if '=' in feature_str:
+                feat_name_raw, feat_value = feature_str.split('=', 1)
+                feat_name = feature_map.get(feat_name_raw.strip(), feat_name_raw.strip())
+                display_name = f"{feat_name} {feat_value.strip()}"
+            else:
+                feat_name = feature_map.get(feature_str.strip(), feature_str.strip())
+                display_name = feat_name
+                feat_value = ""
+            
+            # Déterminer l'impact textuel
+            impact_text = "favorable" if is_positive else "defavorable"
+            
+            # Descriptions contextuelles
             descriptions = {
-                "Marque": "Excellente réputation" if is_positive else "Moins reconnue",
-                "État": "Excellent état" if is_positive else "État moyen",
-                "Prix": "Bon prix" if is_positive else "Prix élevé",
-                "Vendeur": "Vendeur fiable" if is_positive else "Risque vendeur",
-                "Année": "Année recherchée" if is_positive else "Moins collectible",
-                "Avis": "Avis positifs" if is_positive else "Peu d'avis"
+                "Marque": "La marque a une excellente réputation sur le marché." if is_positive else "Marque moins reconnue sur le marché.",
+                "État": "L'état augmente la valeur perçue." if is_positive else "L'état diminue la valeur perçue.",
+                "Prix": "Le prix d'achat initial affecte le potentiel de ROI." if not is_positive else "Prix attractif pour l'investissement.",
+                "Vendeur de confiance": "La confiance dans le vendeur réduit le risque." if is_positive else "Manque de confiance dans le vendeur.",
+                "Année": "L'année de production influence la rareté et la collectibilité." if not is_positive else "Année recherchée par les collectionneurs.",
+                "Avis": "Les avis positifs renforcent la crédibilité." if is_positive else "Peu d'avis disponibles."
             }
             
-            contributions.append({
+            contrib_data = {
                 "feature": feat_name,
-                "value": feat_val,
+                "value": feat_value,
                 "contribution": round(abs(weight_float), 4),
-                "impact": "favorable" if is_positive else "defavorable",
-                "description": descriptions.get(feat_name, "Impact sur prédiction")
-            })
-        
-        # Trier
-        contributions.sort(key=lambda x: x["contribution"], reverse=True)
-        
-        # Chart data
-        chart_data = []
-        for c in contributions:
-            val = c["contribution"] if c["impact"] == "favorable" else -c["contribution"]
-            display_name = f"{c['feature']}: {c['value']}" if c['value'] else c['feature']
+                "raw_value": round(weight_float, 4),
+                "impact": impact_text,
+                "description": descriptions.get(feat_name, "Impact sur la prédiction")
+            }
+            
+            contributions.append(contrib_data)
+            
+            # Données pour le graphique
             chart_data.append({
                 "feature": display_name,
-                "value": val,
-                "color": "#22c55e" if c["impact"] == "favorable" else "#ef4444"
+                "value": round(weight_float, 4),
+                "color": "#22c55e" if is_positive else "#ef4444"
             })
+        
+        # Trier contributions par importance absolue
+        contributions.sort(key=lambda x: x["contribution"], reverse=True)
+        chart_data.sort(key=lambda x: abs(x["value"]), reverse=True)
         
         return {
             "available": True,
-            "chart_type": "bar_horizontal",
+            "type": "local",
             "title": "Explication locale (LIME)",
-            "description": "Contributions des caractéristiques pour cette montre spécifique.",
-            "data": chart_data,
-            "contributions": contributions
+            "description": "LIME montre quelles caractéristiques ont contribué positivement ou négativement à la prédiction pour cette montre spécifique.",
+            "chart_data": chart_data,
+            "contributions": contributions,
+            "legend": {
+                "positive": "Favorise l'investissement",
+                "negative": "Défavorise l'investissement"
+            }
         }
             
     except Exception as e:
-        import traceback
         print(f"LIME Error: {str(e)}")
+        import traceback
         print(traceback.format_exc())
-        return {"error": str(e), "available": False}
+        return {"available": False, "error": str(e)}
 # ============================================================
 # ENDPOINTS PAR ONGLET
 # ============================================================
