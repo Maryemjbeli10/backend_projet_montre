@@ -81,6 +81,23 @@ class BrandEnum(str, Enum):
     LONGINES = "Longines"
     RADO = "Rado"
     HAMILTON = "Hamilton"
+    CYMA = "Cyma"
+    CONCORD = "Concord"
+    SQUALE = "Squale"
+    GUCCI = "Gucci"
+    CUERVO_Y_SOBRINOS = "Cuervo y Sobrinos"
+    NORQAIN = "Norqain"
+    DAVOSA = "Davosa"
+    POLJOT = "Poljot"
+    REVUE_THOMMEN = "Revue Thommen"
+    CWC = "CWC"
+    RICHARD_MILLE = "Richard Mille"
+    GREUBEL_FORSEY = "Greubel Forsey"
+    GRAF = "Graf"
+    LAURENT_FERRIER = "Laurent Ferrier"
+    DOLCE_GABBANA = "Dolce & Gabbana"
+    MERCURE = "Mercure"
+
 
 class ConditionEnum(str, Enum):
     NEW = "New"
@@ -119,11 +136,19 @@ class MaterialEnum(str, Enum):
     TITANIUM = "Titanium"
     CERAMIC = "Ceramic"
     CARBON = "Carbon"
+    YELLOW_GOLD = "Yellow gold"
+    PLASTIC = "Plastic"
+    RED_GOLD = "Red gold"
+    BRONZE = "Bronze"
+    ALUMINUM = "Aluminum"
+    SAPPIRE_CRYSTAL = "Sapphire crystal"
 
 class CrystalEnum(str, Enum):
     SAPPHIRE = "Sapphire crystal"
     MINERAL = "Mineral crystal"
     PLEXIGLASS = "Plexiglass"
+    GLASS = "Glass"
+    PLASTIC = "Plastic"
 
 class ColorEnum(str, Enum):
     BLACK = "Black"
@@ -134,6 +159,12 @@ class ColorEnum(str, Enum):
     BROWN = "Brown"
     CHAMPAGNE = "Champagne"
     GREY = "Grey"
+    STEEL = "Steel"
+    ORANGE = "Orange"
+    PINK = "Pink"
+    PURPLE = "Purple"
+    BRONZE = "Bronze"
+    RED = "Red"
 
 class AvailabilityEnum(str, Enum):
     IN_STOCK = "Item is in stock"
@@ -502,36 +533,49 @@ def evaluate_investment(watch: CompleteWatchInput) -> InvestmentResult:
     roi_total = (plus_value / watch.prix_achat) * 100
     roi_annualise = roi_total / watch.horizon_annees if watch.horizon_annees > 0 else 0
 
-    # Classification risque
+    # Classification - déterminer la classe prédite
     proba = clf_model.predict_proba(X)[0]
-    risque_score = proba[0]
+    class_names = ["Risqué", "Moyen", "Bon investissement"]
+    predicted_class_idx = np.argmax(proba)
+    predicted_class = class_names[predicted_class_idx]
+    predicted_proba = proba[predicted_class_idx]
 
-    # Recommandation
-    if roi_annualise >= InvestmentThreshold.ROI_EXCELLENT and risque_score < 0.4:
-        recommandation = "EXCELLENT INVESTISSEMENT"
-        confiance = "Élevée"
-        risque = "Faible"
-        evaluation_simple = "Bon"
-    elif roi_annualise >= InvestmentThreshold.ROI_GOOD and risque_score < 0.5:
-        recommandation = "BON INVESTISSEMENT"
-        confiance = "Moyenne à Élevée"
-        risque = "Modéré"
-        evaluation_simple = "Bon"
-    elif roi_annualise >= InvestmentThreshold.ROI_ACCEPTABLE:
-        recommandation = "INVESTISSEMENT ACCEPTABLE"
-        confiance = "Moyenne"
-        risque = "Moyen"
-        evaluation_simple = "Moyen"
-    elif plus_value > 0:
-        recommandation = "INVESTISSEMENT MARGINAL"
-        confiance = "Faible"
-        risque = "Élevé"
-        evaluation_simple = "Risqué"
-    else:
+    # Recommandation basée sur la classe prédite ET le ROI
+    # 🔒 Règle absolue : ROI négatif = mauvais investissement
+    if roi_total < 0:
         recommandation = "MAUVAIS INVESTISSEMENT - ÉVITER"
         confiance = "Élevée"
         risque = "Très Élevé"
         evaluation_simple = "Risqué"
+
+    # 🟠 ROI faible mais positif
+    elif roi_annualise < InvestmentThreshold.ROI_ACCEPTABLE:
+        recommandation = "INVESTISSEMENT RISQUÉ"
+        confiance = "Faible"
+        risque = "Élevé"
+        evaluation_simple = "Risqué"
+
+    # 🟡 ROI correct
+    elif roi_annualise < InvestmentThreshold.ROI_GOOD:
+        recommandation = "INVESTISSEMENT ACCEPTABLE"
+        confiance = "Moyenne"
+        risque = "Moyen"
+        evaluation_simple = "Moyen"
+
+    # 🟢 Bon investissement
+    elif roi_annualise < InvestmentThreshold.ROI_EXCELLENT:
+        recommandation = "BON INVESTISSEMENT"
+        confiance = "Moyenne à Élevée"
+        risque = "Modéré"
+        evaluation_simple = "Bon"
+
+    # 🟢🟢 Excellent investissement
+    else:
+        recommandation = "EXCELLENT INVESTISSEMENT"
+        confiance = "Élevée"
+        risque = "Faible"
+        evaluation_simple = "Bon"
+
 
     # Estimation prix marché
     age = int(X["age"].iloc[0])
@@ -558,15 +602,10 @@ def evaluate_investment(watch: CompleteWatchInput) -> InvestmentResult:
         details={
             "prix_marche_actuel": round(prix_marche, 2),
             "qualite_affaire": deal_quality,
-            "difference_avec_marche": round(watch.prix_achat - prix_marche, 2),
-            "probabilites": {
-                "risque": round(float(proba[0]), 3),
-                "moyen": round(float(proba[1]), 3),
-                "bon": round(float(proba[2]), 3)
-            }
+            "difference_avec_marche": round(watch.prix_achat - prix_marche, 2)
+            # SUPPRESSION: plus de "probabilites" ici
         }
     )
-
 # ============================================================
 # MODÈLES DE RÉPONSE XAI
 # ============================================================

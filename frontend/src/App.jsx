@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Watch, 
   Settings, 
@@ -7,7 +7,6 @@ import {
   DollarSign, 
   Calendar, 
   Maximize, 
-  Droplets, 
   Gem, 
   Store, 
   Activity,
@@ -15,55 +14,221 @@ import {
   Shield,
   TrendingUp,
   ArrowRight,
-  ChevronDown
+  ChevronDown,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Info,
+  ChevronRight
 } from 'lucide-react';
+
+// Configuration API
+const API_BASE_URL = 'http://localhost:8000';
 
 function App() {
   const [currentView, setCurrentView] = useState('landing');
   const [activeTab, setActiveTab] = useState('general');
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [apiOptions, setApiOptions] = useState(null);
+  const [touchedFields, setTouchedFields] = useState({});
 
-  // États du formulaire
+  // États du formulaire - TOUS LES CHAMPS SONT OBLIGATOIRES
   const [formData, setFormData] = useState({
     // Général
-    brand: 'Rolex',
-    condition: 'Like new & unworn',
-    price: 10000,
-    shape: 'Round',
-    movement: 'Automatic',
-    gender: "Men's watch",
-    year: 2020,
-    waterResistance: 100,
-    dialSize: 40,
-    boxPapers: 'Original box, original papers',
+    prix_achat: '',
+    marque: '',
+    etat: '',
+    mouvement: '',
+    genre: '',
+    annee_production: '',
+    forme: '',
+    surface_cadran: '',
+    contenu_livraison: '',
+    horizon_annees: 3,
+    
     // Matériaux
-    caseMaterial: 'Steel',
-    braceletMaterial: 'Steel',
-    crystal: 'Sapphire crystal',
-    dialColor: 'Black',
-    braceletColor: 'Silver',
-    clasp: 'Fold clasp',
-    availability: 'Item is in stock',
+    materiau_boitier: '',
+    materiau_bracelet: '',
+    verre: '',
+    cadran: '',
+    couleur_bracelet: '',
+    disponibilite: '',
+    
     // Vendeur
-    sellerWatches: 50,
-    activeListings: 10,
-    sellerRating: 100,
-    fastShipping: true,
-    trustedSeller: true,
-    punctuality: true
+    montres_vendues: '',
+    annonces_actives: '',
+    avis_vendeur: '',
+    expedition_rapide: 0,
+    vendeur_confiance: 0,
+    ponctualite: 0
   });
+
+  // Vérifier si tous les champs sont remplis
+  const isFormComplete = () => {
+    // Vérifier tous les champs sauf les toggles (0/1 sont valides)
+    const requiredFields = [
+      'prix_achat', 'marque', 'etat', 'mouvement', 'genre',
+      'annee_production', 'forme', 'surface_cadran', 'contenu_livraison',
+      'materiau_boitier', 'materiau_bracelet', 'verre', 'cadran',
+      'couleur_bracelet', 'disponibilite',
+      'montres_vendues', 'annonces_actives', 'avis_vendeur'
+    ];
+
+    return requiredFields.every(field => {
+      const value = formData[field];
+      return value !== '' && value !== null && value !== undefined && value !== 0;
+    });
+  };
+
+  // Vérifier la validité d'un champ spécifique
+  const isFieldValid = (field) => {
+    const value = formData[field];
+    return value !== '' && value !== null && value !== undefined;
+  };
+
+  // Charger les options au démarrage
+  useEffect(() => {
+    fetchOptions();
+  }, []);
+
+  const fetchOptions = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/options`);
+      if (response.ok) {
+        const data = await response.json();
+        setApiOptions(data);
+      }
+    } catch (err) {
+      console.error('Erreur chargement options:', err);
+    }
+  };
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    setTouchedFields(prev => ({ ...prev, [field]: true }));
+    setError(null);
   };
 
-  const handleAnalyze = () => {
-    console.log('Analyzing:', formData);
-    alert('Analyse lancée ! (À connecter avec votre backend)');
+  const handleAnalyze = async () => {
+    if (!isFormComplete()) {
+      setError('Veuillez remplir tous les champs obligatoires');
+      // Marquer tous les champs comme touchés pour afficher les erreurs
+      const allFields = Object.keys(formData).reduce((acc, key) => {
+        acc[key] = true;
+        return acc;
+      }, {});
+      setTouchedFields(allFields);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/analyze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Erreur lors de l\'analyse');
+      }
+
+      const data = await response.json();
+      setResult(data);
+      setCurrentView('results');
+      
+    } catch (err) {
+      setError(err.message || 'Erreur de connexion au serveur');
+      console.error('Erreur:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExplain = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/explain`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setResult(prev => ({ ...prev, explanations: data }));
+      }
+    } catch (err) {
+      console.error('Erreur explications:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Navigation entre onglets avec validation
+  const goToNextTab = () => {
+    // Marquer les champs de l'onglet actuel comme touchés
+    const currentFields = getTabFields(activeTab);
+    setTouchedFields(prev => ({
+      ...prev,
+      ...currentFields.reduce((acc, field) => ({ ...acc, [field]: true }), {})
+    }));
+
+    if (activeTab === 'general') setActiveTab('materials');
+    else if (activeTab === 'materials') setActiveTab('seller');
+  };
+
+  const goToPrevTab = () => {
+    if (activeTab === 'materials') setActiveTab('general');
+    else if (activeTab === 'seller') setActiveTab('materials');
+  };
+
+  const getTabFields = (tab) => {
+    switch(tab) {
+      case 'general':
+        return ['prix_achat', 'marque', 'etat', 'mouvement', 'genre', 'annee_production', 'forme', 'surface_cadran', 'contenu_livraison', 'horizon_annees'];
+      case 'materials':
+        return ['materiau_boitier', 'materiau_bracelet', 'verre', 'cadran', 'couleur_bracelet', 'disponibilite'];
+      case 'seller':
+        return ['montres_vendues', 'annonces_actives', 'avis_vendeur', 'expedition_rapide', 'vendeur_confiance', 'ponctualite'];
+      default:
+        return [];
+    }
+  };
+
+  // Vérifier si l'onglet actuel est complet
+  const isCurrentTabComplete = () => {
+    const currentFields = getTabFields(activeTab);
+    return currentFields.every(field => isFieldValid(field));
   };
 
   if (currentView === 'landing') {
     return <LandingPage onStart={() => setCurrentView('form')} />;
   }
+
+  if (currentView === 'results' && result) {
+    return (
+      <ResultsPage 
+        result={result} 
+        onBack={() => setCurrentView('form')}
+        onExplain={handleExplain}
+        isLoading={isLoading}
+      />
+    );
+  }
+
+  const formComplete = isFormComplete();
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-8">
@@ -74,9 +239,33 @@ function App() {
             Saisissez les caractéristiques de la montre
           </h1>
           <p className="text-gray-400">
-            Remplissez le formulaire ci-dessous avec les détails de la montre que vous souhaitez analyser.
+            Tous les champs sont obligatoires pour une analyse précise.
           </p>
         </div>
+
+        {/* Progress Bar */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between text-sm text-gray-400 mb-2">
+            <span>Progression</span>
+            <span>{formComplete ? '100%' : activeTab === 'general' ? '33%' : activeTab === 'materials' ? '66%' : '90%'}</span>
+          </div>
+          <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-amber-500 transition-all duration-500"
+              style={{ 
+                width: formComplete ? '100%' : activeTab === 'general' ? '33%' : activeTab === 'materials' ? '66%' : '90%' 
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3 text-red-400">
+            <AlertCircle size={20} />
+            <span>{error}</span>
+          </div>
+        )}
 
         {/* Card */}
         <div className="bg-[#111] rounded-2xl border border-white/10 overflow-hidden">
@@ -87,18 +276,21 @@ function App() {
               onClick={() => setActiveTab('general')}
               icon={<Watch size={16} />}
               label="Général"
+              completed={isTabComplete('general')}
             />
             <TabButton 
               active={activeTab === 'materials'} 
               onClick={() => setActiveTab('materials')}
               icon={<Gem size={16} />}
               label="Matériaux"
+              completed={isTabComplete('materials')}
             />
             <TabButton 
               active={activeTab === 'seller'} 
               onClick={() => setActiveTab('seller')}
               icon={<Store size={16} />}
               label="Vendeur"
+              completed={isTabComplete('seller')}
             />
           </div>
 
@@ -107,70 +299,99 @@ function App() {
             {activeTab === 'general' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <SelectField 
-                  label="Marque" 
-                  value={formData.brand} 
-                  onChange={(v) => updateField('brand', v)}
-                  options={['Rolex', 'Patek Philippe', 'Audemars Piguet', 'Omega', 'Cartier']}
+                  label="Marque *" 
+                  value={formData.marque} 
+                  onChange={(v) => updateField('marque', v)}
+                  options={['', 'Rolex', 'Patek Philippe', 'Audemars Piguet', 'Omega', 'Cartier', 'Tudor', 'TAG Heuer', 'Breitling', 'IWC', 'Jaeger-LeCoultre', 'Panerai', 'Hublot', 'Zenith', 'Seiko', 'Casio', 'Citizen', 'Tissot', 'Longines', 'Rado', 'Hamilton', 'Cyma', 'Concord', 'Squale', 'Gucci', 'Cuervo y Sobrinos', 'Norqain', 'Davosa', 'Poljot', 'Revue Thommen', 'CWC', 'Richard Mille', 'Greubel Forsey', 'Graf', 'Laurent Ferrier', 'Dolce & Gabbana', 'Mercure']}
                   icon={<Watch size={16} />}
+                  required
+                  error={touchedFields.marque && !isFieldValid('marque')}
                 />
                 <SelectField 
-                  label="Mouvement" 
-                  value={formData.movement} 
-                  onChange={(v) => updateField('movement', v)}
-                  options={['Automatic', 'Manual', 'Quartz']}
+                  label="Mouvement *" 
+                  value={formData.mouvement} 
+                  onChange={(v) => updateField('mouvement', v)}
+                  options={['', 'Automatic', 'Manual winding', 'Quartz']}
                   icon={<Settings size={16} />}
+                  required
+                  error={touchedFields.mouvement && !isFieldValid('mouvement')}
                 />
                 <SelectField 
-                  label="État" 
-                  value={formData.condition} 
-                  onChange={(v) => updateField('condition', v)}
-                  options={['Like new & unworn', 'Excellent', 'Very good', 'Good', 'Fair']}
+                  label="État *" 
+                  value={formData.etat} 
+                  onChange={(v) => updateField('etat', v)}
+                  options={['', 'New', 'Unworn', 'Like new & unworn', 'Used (Mint)', 'Used (Very good)', 'Used (Good)', 'Used (Fair)', 'Used (Poor)']}
                   icon={<Package size={16} />}
+                  required
+                  error={touchedFields.etat && !isFieldValid('etat')}
                 />
                 <SelectField 
-                  label="Genre" 
-                  value={formData.gender} 
-                  onChange={(v) => updateField('gender', v)}
-                  options={["Men's watch", "Women's watch", 'Unisex']}
+                  label="Genre *" 
+                  value={formData.genre} 
+                  onChange={(v) => updateField('genre', v)}
+                  options={['', "Men's watch", "Women's watch", 'Unisex']}
                   icon={<User size={16} />}
+                  required
+                  error={touchedFields.genre && !isFieldValid('genre')}
                 />
                 <NumberField 
-                  label="Prix d'achat ($)" 
-                  value={formData.price} 
-                  onChange={(v) => updateField('price', v)}
+                  label="Prix d'achat ($) *" 
+                  value={formData.prix_achat} 
+                  onChange={(v) => updateField('prix_achat', v)}
                   icon={<DollarSign size={16} />}
+                  min={100}
+                  required
+                  error={touchedFields.prix_achat && !isFieldValid('prix_achat')}
+                  placeholder="Ex: 10000"
                 />
                 <NumberField 
-                  label="Année de production" 
-                  value={formData.year} 
-                  onChange={(v) => updateField('year', v)}
+                  label="Année de production *" 
+                  value={formData.annee_production} 
+                  onChange={(v) => updateField('annee_production', v)}
                   icon={<Calendar size={16} />}
+                  min={1900}
+                  max={2030}
+                  required
+                  error={touchedFields.annee_production && !isFieldValid('annee_production')}
+                  placeholder="Ex: 2020"
                 />
                 <SelectField 
-                  label="Forme" 
-                  value={formData.shape} 
-                  onChange={(v) => updateField('shape', v)}
-                  options={['Round', 'Square', 'Rectangular', 'Tonnea']}
+                  label="Forme *" 
+                  value={formData.forme} 
+                  onChange={(v) => updateField('forme', v)}
+                  options={['', 'Round', 'Square', 'Rectangular', 'Tonneau', 'Cushion', 'Octagonal']}
                   icon={<Maximize size={16} />}
+                  required
+                  error={touchedFields.forme && !isFieldValid('forme')}
                 />
                 <NumberField 
-                  label="Résistance à l'eau (m)" 
-                  value={formData.waterResistance} 
-                  onChange={(v) => updateField('waterResistance', v)}
-                  icon={<Droplets size={16} />}
-                />
-                <NumberField 
-                  label="Surface du cadran (mm²)" 
-                  value={formData.dialSize} 
-                  onChange={(v) => updateField('dialSize', v)}
+                  label="Surface du cadran (mm²) *" 
+                  value={formData.surface_cadran} 
+                  onChange={(v) => updateField('surface_cadran', v)}
                   icon={<Maximize size={16} />}
+                  min={1}
+                  required
+                  error={touchedFields.surface_cadran && !isFieldValid('surface_cadran')}
+                  placeholder="Ex: 40"
                 />
                 <SelectField 
-                  label="Contenu de la livraison" 
-                  value={formData.boxPapers} 
-                  onChange={(v) => updateField('boxPapers', v)}
-                  options={['Original box, original papers', 'Original box only', 'Papers only', 'None']}
+                  label="Contenu de la livraison *" 
+                  value={formData.contenu_livraison} 
+                  onChange={(v) => updateField('contenu_livraison', v)}
+                  options={['', 'Original box, original papers', 'Original box, no original papers', 'Original papers, no original box', 'No original box, no original papers']}
                   icon={<Package size={16} />}
+                  required
+                  error={touchedFields.contenu_livraison && !isFieldValid('contenu_livraison')}
+                />
+                <NumberField 
+                  label="Horizon d'investissement (années) *" 
+                  value={formData.horizon_annees} 
+                  onChange={(v) => updateField('horizon_annees', v)}
+                  icon={<Clock size={16} />}
+                  min={1}
+                  max={10}
+                  required
+                  error={touchedFields.horizon_annees && !isFieldValid('horizon_annees')}
                 />
               </div>
             )}
@@ -178,53 +399,58 @@ function App() {
             {activeTab === 'materials' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <SelectField 
-                  label="Matériau du boîtier" 
-                  value={formData.caseMaterial} 
-                  onChange={(v) => updateField('caseMaterial', v)}
-                  options={['Steel', 'Gold', 'Rose Gold', 'Platinum', 'Titanium', 'Ceramic']}
+                  label="Matériau du boîtier *" 
+                  value={formData.materiau_boitier} 
+                  onChange={(v) => updateField('materiau_boitier', v)}
+                  options={['', 'Steel', 'Yellow gold', 'Rose gold', 'White gold', 'Platinum', 'Titanium', 'Ceramic', 'Carbon', 'Plastic', 'Red gold', 'Bronze', 'Aluminum', 'Sapphire crystal']}
                   icon={<Gem size={16} />}
+                  required
+                  error={touchedFields.materiau_boitier && !isFieldValid('materiau_boitier')}
                 />
                 <SelectField 
-                  label="Matériau du bracelet" 
-                  value={formData.braceletMaterial} 
-                  onChange={(v) => updateField('braceletMaterial', v)}
-                  options={['Steel', 'Leather', 'Rubber', 'Gold', 'Fabric']}
+                  label="Matériau du bracelet *" 
+                  value={formData.materiau_bracelet} 
+                  onChange={(v) => updateField('materiau_bracelet', v)}
+                  options={['', 'Steel', 'Yellow gold', 'Rose gold', 'White gold', 'Platinum', 'Titanium', 'Ceramic', 'Carbon', 'Plastic', 'Red gold', 'Bronze', 'Aluminum', 'Sapphire crystal']}
                   icon={<Gem size={16} />}
+                  required
+                  error={touchedFields.materiau_bracelet && !isFieldValid('materiau_bracelet')}
                 />
                 <SelectField 
-                  label="Verre" 
-                  value={formData.crystal} 
-                  onChange={(v) => updateField('crystal', v)}
-                  options={['Sapphire crystal', 'Mineral glass', 'Plexiglass']}
+                  label="Verre *" 
+                  value={formData.verre} 
+                  onChange={(v) => updateField('verre', v)}
+                  options={['', 'Sapphire crystal', 'Mineral crystal', 'Plexiglass', 'Glass', 'Plastic']}
                   icon={<Gem size={16} />}
+                  required
+                  error={touchedFields.verre && !isFieldValid('verre')}
                 />
                 <SelectField 
-                  label="Cadran" 
-                  value={formData.dialColor} 
-                  onChange={(v) => updateField('dialColor', v)}
-                  options={['Black', 'White', 'Blue', 'Green', 'Silver', 'Champagne']}
+                  label="Cadran *" 
+                  value={formData.cadran} 
+                  onChange={(v) => updateField('cadran', v)}
+                  options={['', 'Black', 'Silver', 'White', 'Blue', 'Green', 'Brown', 'Champagne', 'Grey', 'Steel', 'Orange', 'Pink', 'Purple', 'Bronze', 'Red']}
                   icon={<Maximize size={16} />}
+                  required
+                  error={touchedFields.cadran && !isFieldValid('cadran')}
                 />
                 <SelectField 
-                  label="Couleur du bracelet" 
-                  value={formData.braceletColor} 
-                  onChange={(v) => updateField('braceletColor', v)}
-                  options={['Silver', 'Black', 'Brown', 'Blue', 'Gold']}
+                  label="Couleur du bracelet *" 
+                  value={formData.couleur_bracelet} 
+                  onChange={(v) => updateField('couleur_bracelet', v)}
+                  options={['', 'Black', 'Silver', 'White', 'Blue', 'Green', 'Brown', 'Champagne', 'Grey', 'Steel', 'Orange', 'Pink', 'Purple', 'Bronze', 'Red']}
                   icon={<Settings size={16} />}
+                  required
+                  error={touchedFields.couleur_bracelet && !isFieldValid('couleur_bracelet')}
                 />
                 <SelectField 
-                  label="Fermoir" 
-                  value={formData.clasp} 
-                  onChange={(v) => updateField('clasp', v)}
-                  options={['Fold clasp', 'Buckle', 'Deployant clasp']}
-                  icon={<Settings size={16} />}
-                />
-                <SelectField 
-                  label="Disponibilité" 
-                  value={formData.availability} 
-                  onChange={(v) => updateField('availability', v)}
-                  options={['Item is in stock', 'Pre-order', 'Out of stock']}
+                  label="Disponibilité *" 
+                  value={formData.disponibilite} 
+                  onChange={(v) => updateField('disponibilite', v)}
+                  options={['', 'Item is in stock', 'Item is in stock at a partner boutique', 'Item is being serviced', 'Item is on hold']}
                   icon={<Package size={16} />}
+                  required
+                  error={touchedFields.disponibilite && !isFieldValid('disponibilite')}
                 />
               </div>
             )}
@@ -233,89 +459,163 @@ function App() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <NumberField 
-                    label="Montres vendues par le vendeur" 
-                    value={formData.sellerWatches} 
-                    onChange={(v) => updateField('sellerWatches', v)}
+                    label="Montres vendues par le vendeur *" 
+                    value={formData.montres_vendues} 
+                    onChange={(v) => updateField('montres_vendues', v)}
                     icon={<Store size={16} />}
+                    min={0}
+                    required
+                    error={touchedFields.montres_vendues && !isFieldValid('montres_vendues')}
+                    placeholder="Ex: 50"
                   />
                   <NumberField 
-                    label="Annonces actives du vendeur" 
-                    value={formData.activeListings} 
-                    onChange={(v) => updateField('activeListings', v)}
+                    label="Annonces actives du vendeur *" 
+                    value={formData.annonces_actives} 
+                    onChange={(v) => updateField('annonces_actives', v)}
                     icon={<Package size={16} />}
+                    min={0}
+                    required
+                    error={touchedFields.annonces_actives && !isFieldValid('annonces_actives')}
+                    placeholder="Ex: 10"
                   />
                   <NumberField 
-                    label="Avis du vendeur" 
-                    value={formData.sellerRating} 
-                    onChange={(v) => updateField('sellerRating', v)}
+                    label="Avis du vendeur *" 
+                    value={formData.avis_vendeur} 
+                    onChange={(v) => updateField('avis_vendeur', v)}
                     icon={<Activity size={16} />}
+                    min={0}
+                    required
+                    error={touchedFields.avis_vendeur && !isFieldValid('avis_vendeur')}
+                    placeholder="Ex: 100"
                   />
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <ToggleCard 
-                    title="Expédition rapide"
+                    title="Expédition rapide *"
                     description="Le vendeur expédie rapidement"
-                    checked={formData.fastShipping}
-                    onChange={(v) => updateField('fastShipping', v)}
+                    checked={formData.expedition_rapide === 1}
+                    onChange={(v) => updateField('expedition_rapide', v ? 1 : 0)}
                     icon={<Clock size={20} />}
                   />
                   <ToggleCard 
-                    title="Vendeur de confiance"
+                    title="Vendeur de confiance *"
                     description="Le vendeur est vérifié"
-                    checked={formData.trustedSeller}
-                    onChange={(v) => updateField('trustedSeller', v)}
+                    checked={formData.vendeur_confiance === 1}
+                    onChange={(v) => updateField('vendeur_confiance', v ? 1 : 0)}
                     icon={<Shield size={20} />}
                   />
                   <ToggleCard 
-                    title="Ponctualité"
+                    title="Ponctualité *"
                     description="Le vendeur est ponctuel"
-                    checked={formData.punctuality}
-                    onChange={(v) => updateField('punctuality', v)}
+                    checked={formData.ponctualite === 1}
+                    onChange={(v) => updateField('ponctualite', v ? 1 : 0)}
                     icon={<Clock size={20} />}
                   />
                 </div>
+
+                {/* Message si formulaire incomplet */}
+                {!formComplete && (
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-3 text-amber-400">
+                    <Info size={20} />
+                    <span className="text-sm">
+                      Veuillez remplir tous les champs des onglets précédents pour activer l'analyse
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Submit Button */}
-            <button 
-              onClick={handleAnalyze}
-              className="w-full mt-8 flex items-center justify-center gap-2 py-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-semibold rounded-xl transition-all duration-300"
-            >
-              <TrendingUp size={20} />
-              <span>Analyser l'investissement</span>
-              <ArrowRight size={20} />
-            </button>
+            {/* Navigation Buttons */}
+            <div className="flex gap-4 mt-8">
+              {/* Bouton Précédent (sauf sur premier onglet) */}
+              {activeTab !== 'general' && (
+                <button 
+                  onClick={goToPrevTab}
+                  className="flex-1 py-4 px-6 bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white font-semibold rounded-xl transition-colors border border-white/10"
+                >
+                  ← Précédent
+                </button>
+              )}
+              
+              {/* Bouton Suivant ou Analyser */}
+              {activeTab !== 'seller' ? (
+                // Bouton Continuer (onglets General et Materials)
+                <button 
+                  onClick={goToNextTab}
+                  className="flex-1 py-4 px-6 bg-amber-600 hover:bg-amber-500 text-black font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  <span>Suivant</span>
+                  <ChevronRight size={20} />
+                </button>
+              ) : (
+                // Bouton Analyser (uniquement sur onglet Vendeur)
+                <button 
+                  onClick={handleAnalyze}
+                  disabled={isLoading || !formComplete}
+                  className={`flex-1 py-4 px-6 font-semibold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                    formComplete && !isLoading
+                      ? 'bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black cursor-pointer'
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={20} className="animate-spin" />
+                      <span>Analyse en cours...</span>
+                    </>
+                  ) : (
+                    <>
+                      <TrendingUp size={20} />
+                      <span>Analyser l'investissement</span>
+                      <ArrowRight size={20} />
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
+
+  // Fonction helper pour vérifier si un onglet est complet
+  function isTabComplete(tab) {
+    const fields = getTabFields(tab);
+    return fields.every(field => isFieldValid(field));
+  }
 }
+
+// ... (reste des composants inchangés: ResultsPage, TabButton, SelectField, NumberField, ToggleCard, MetricCard, ProbabilityBar, LandingPage, FeatureCard)
 
 // Composants réutilisables
 
-function TabButton({ active, onClick, icon, label }) {
+function TabButton({ active, onClick, icon, label, completed }) {
   return (
     <button
       onClick={onClick}
-      className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-medium transition-colors ${
+      className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-medium transition-colors relative ${
         active 
           ? 'bg-amber-500/20 text-amber-400 border-b-2 border-amber-500' 
-          : 'text-gray-400 hover:text-white'
+          : completed
+            ? 'text-green-400 hover:text-green-300'
+            : 'text-gray-400 hover:text-white'
       }`}
     >
       {icon}
       {label}
+      {completed && !active && (
+        <CheckCircle size={14} className="text-green-400" />
+      )}
     </button>
   );
 }
 
-function SelectField({ label, value, onChange, options, icon }) {
+function SelectField({ label, value, onChange, options, icon, required, error }) {
   return (
     <div className="space-y-2">
-      <label className="flex items-center gap-2 text-sm text-gray-400">
+      <label className={`flex items-center gap-2 text-sm ${error ? 'text-red-400' : 'text-gray-400'}`}>
         {icon}
         {label}
       </label>
@@ -323,31 +623,40 @@ function SelectField({ label, value, onChange, options, icon }) {
         <select 
           value={value} 
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-500/50 transition-colors cursor-pointer"
+          className={`w-full appearance-none bg-[#1a1a1a] border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-500/50 transition-colors cursor-pointer ${
+            error ? 'border-red-500/50' : 'border-white/10'
+          }`}
         >
           {options.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
+            <option key={opt} value={opt}>{opt || 'Sélectionnez...'}</option>
           ))}
         </select>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
       </div>
+      {error && <span className="text-xs text-red-400">Ce champ est obligatoire</span>}
     </div>
   );
 }
 
-function NumberField({ label, value, onChange, icon }) {
+function NumberField({ label, value, onChange, icon, min, max, required, error, placeholder }) {
   return (
     <div className="space-y-2">
-      <label className="flex items-center gap-2 text-sm text-gray-400">
+      <label className={`flex items-center gap-2 text-sm ${error ? 'text-red-400' : 'text-gray-400'}`}>
         {icon}
         {label}
       </label>
       <input 
         type="number" 
         value={value} 
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-500/50 transition-colors"
+        min={min}
+        max={max}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+        className={`w-full bg-[#1a1a1a] border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-500/50 transition-colors ${
+          error ? 'border-red-500/50' : 'border-white/10'
+        }`}
       />
+      {error && <span className="text-xs text-red-400">Ce champ est obligatoire</span>}
     </div>
   );
 }
@@ -368,6 +677,207 @@ function ToggleCard({ title, description, checked, onChange, icon }) {
       >
         <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${checked ? 'translate-x-7' : 'translate-x-1'}`} />
       </button>
+    </div>
+  );
+}
+
+function MetricCard({ label, value, icon, highlight, positive }) {
+  return (
+    <div className={`p-4 rounded-xl border ${
+      highlight ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[#1a1a1a] border-white/10'
+    }`}>
+      <div className="flex items-center gap-2 text-gray-400 mb-2">
+        {icon}
+        <span className="text-sm">{label}</span>
+      </div>
+      <div className={`text-xl font-bold ${
+        positive === true ? 'text-green-400' : 
+        positive === false ? 'text-red-400' : 
+        highlight ? 'text-amber-400' : 'text-white'
+      }`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function ProbabilityBar({ label, value, color }) {
+  const percentage = Math.round(value * 100);
+  return (
+    <div className="flex items-center gap-4">
+      <div className="w-32 text-sm text-gray-400">{label}</div>
+      <div className="flex-1 h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+        <div 
+          className={`h-full ${color} transition-all duration-500`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      <div className="w-12 text-right text-sm font-medium">{percentage}%</div>
+    </div>
+  );
+}
+
+// Page de résultats
+function ResultsPage({ result, onBack, onExplain, isLoading }) {
+  const getEvaluationColor = (evaluation) => {
+    switch (evaluation) {
+      case 'Bon': return 'text-green-400 bg-green-400/10 border-green-400/30';
+      case 'Moyen': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30';
+      case 'Risqué': return 'text-red-400 bg-red-400/10 border-red-400/30';
+      default: return 'text-gray-400 bg-gray-400/10 border-gray-400/30';
+    }
+  };
+
+  const getEvaluationIcon = (evaluation) => {
+    switch (evaluation) {
+      case 'Bon': return <CheckCircle size={24} className="text-green-400" />;
+      case 'Moyen': return <Info size={24} className="text-yellow-400" />;
+      case 'Risqué': return <XCircle size={24} className="text-red-400" />;
+      default: return <Info size={24} />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white p-4 md:p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-serif font-bold mb-2">
+            Résultat de l'analyse
+          </h1>
+          <p className="text-gray-400">
+            Voici l'évaluation de votre investissement basée sur nos modèles ML.
+          </p>
+        </div>
+
+        {/* Main Result Card */}
+        <div className="bg-[#111] rounded-2xl border border-white/10 p-8 mb-6">
+          <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-xl border ${getEvaluationColor(result.evaluation_simple)} mb-6`}>
+            {getEvaluationIcon(result.evaluation_simple)}
+            <div>
+              <div className="text-sm opacity-80">Évaluation</div>
+              <div className="text-xl font-bold">{result.evaluation_simple}</div>
+            </div>
+          </div>
+
+          <h2 className="text-2xl font-bold mb-6 text-amber-400">{result.recommandation}</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <MetricCard 
+              label="Prix d'achat"
+              value={`$${result.prix_achat.toLocaleString()}`}
+              icon={<DollarSign size={20} />}
+            />
+            <MetricCard 
+              label="Prix futur estimé"
+              value={`$${result.prix_futur_estime.toLocaleString()}`}
+              icon={<TrendingUp size={20} />}
+              highlight
+            />
+            <MetricCard 
+              label="Plus-value"
+              value={`$${result.plus_value.toLocaleString()}`}
+              icon={<Activity size={20} />}
+              positive={result.plus_value > 0}
+            />
+            <MetricCard 
+              label="ROI Total"
+              value={`${result.roi_percent}%`}
+              icon={<Clock size={20} />}
+              positive={result.roi_percent > 0}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="p-4 bg-[#1a1a1a] rounded-xl">
+              <div className="text-gray-400 text-sm mb-1">ROI Annualisé</div>
+              <div className={`text-2xl font-bold ${result.roi_annualise >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {result.roi_annualise}%
+              </div>
+            </div>
+            <div className="p-4 bg-[#1a1a1a] rounded-xl">
+              <div className="text-gray-400 text-sm mb-1">Horizon</div>
+              <div className="text-2xl font-bold text-white">
+                {result.horizon_annees} ans
+              </div>
+            </div>
+            <div className="p-4 bg-[#1a1a1a] rounded-xl">
+              <div className="text-gray-400 text-sm mb-1">Niveau de confiance</div>
+              <div className="text-2xl font-bold text-amber-400">
+                {result.confiance}
+              </div>
+            </div>
+          </div>
+
+          {/* SUPPRESSION: Section Probabilités de classification supprimée */}
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button 
+              onClick={onBack}
+              className="flex-1 py-3 px-6 bg-[#1a1a1a] hover:bg-[#2a2a2a] text-white rounded-xl transition-colors"
+            >
+              Nouvelle analyse
+            </button>
+            <button 
+              onClick={onExplain}
+              disabled={isLoading}
+              className="flex-1 py-3 px-6 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-semibold rounded-xl transition-all disabled:opacity-50"
+            >
+              {isLoading ? 'Chargement...' : 'Expliquer la prédiction (XAI)'}
+            </button>
+          </div>
+        </div>
+
+        {/* Explications XAI */}
+        {result.explanations && (
+          <div className="bg-[#111] rounded-2xl border border-white/10 p-8">
+            <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+              <Info size={24} className="text-amber-400" />
+              Explications (XAI)
+            </h3>
+            
+            {result.explanations.shap?.available && (
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold mb-3 text-green-400">SHAP - Importance globale</h4>
+                <div className="space-y-2">
+                  {result.explanations.shap.top_features?.map((feat, idx) => (
+                    <div key={idx} className="flex items-center gap-3 p-3 bg-[#1a1a1a] rounded-lg">
+                      <span className="w-8 h-8 flex items-center justify-center bg-amber-500/20 text-amber-400 rounded-full text-sm font-bold">
+                        {feat.rank}
+                      </span>
+                      <span className="flex-1">{feat.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {result.explanations.lime?.available && (
+              <div>
+                <h4 className="text-lg font-semibold mb-3 text-blue-400">LIME - Explication locale</h4>
+                <div className="space-y-2">
+                  {result.explanations.lime.contributions?.map((contrib, idx) => (
+                    <div key={idx} className={`p-3 rounded-lg flex items-center justify-between ${
+                      contrib.impact === 'favorable' ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'
+                    }`}>
+                      <div>
+                        <div className="font-medium">{contrib.feature}</div>
+                        <div className="text-sm text-gray-400">{contrib.description}</div>
+                      </div>
+                      <div className={`font-bold ${
+                        contrib.impact === 'favorable' ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {contrib.impact === 'favorable' ? '+' : '-'}{Math.round(contrib.contribution * 100)}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
