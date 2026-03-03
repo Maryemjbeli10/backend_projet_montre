@@ -1,7 +1,7 @@
 """
 API FastAPI - Système d'Investissement Montres de Luxe
 VERSION STRUCTURÉE PAR ONGLETS - Correspondance exacte avec le Frontend
-Endpoints: /general, /materials, /seller, /analyze (tout combiné)
+Endpoints: /analyze (tout combiné), /explain
 """
 
 import sys
@@ -892,7 +892,7 @@ def generate_lime_explanation(X: pd.DataFrame, model, feature_names: List[str]) 
         print(traceback.format_exc())
         return {"available": False, "error": str(e)}
 # ============================================================
-# ENDPOINTS PAR ONGLET
+# ENDPOINTS
 # ============================================================
 
 @app.get("/health")
@@ -915,7 +915,7 @@ def health():
                 "version": None  # LIME n'a pas souvent d'attribut __version__ direct
             }
         },
-        "endpoints": ["/general", "/materials", "/seller", "/analyze", "/explain"]
+        "endpoints": ["/analyze", "/explain", "/options"]
     }
 
 @app.get("/options")
@@ -934,254 +934,6 @@ def get_form_options():
         "couleurs": [c.value for c in ColorEnum],
         "disponibilites": [a.value for a in AvailabilityEnum],
         "box": [d.value for d in DeliveryEnum]
-    }
-# ============================================================
-# ENDPOINTS INDÉPENDANTS AVEC PRÉDICTION
-# ============================================================
-
-@app.post("/general")
-def analyze_general(data: GeneralTab):
-    """
-    Étape 1: Analyse basée UNIQUEMENT sur l'onglet Général
-    Matériaux et vendeur = valeurs par défaut standards
-    """
-    if not MODELS_READY:
-        raise HTTPException(503, "Modèles non chargés")
-    
-    # Crée objet complet avec défauts pour matériaux et vendeur
-    complete = CompleteWatchInput(
-        # Général (depuis input)
-        prix_achat=data.prix_achat,
-        marque=data.marque,
-        etat=data.etat,
-        mouvement=data.mouvement,
-        genre=data.genre,
-        annee_production=data.annee_production,
-        forme=data.forme,
-        surface_cadran=data.surface_cadran,
-        contenu_livraison=data.contenu_livraison,
-        horizon_annees=data.horizon_annees,
-        # Matériaux (défauts neutres)
-        materiau_boitier=MaterialEnum.STEEL,
-        materiau_bracelet=MaterialEnum.STEEL,
-        verre=CrystalEnum.SAPPHIRE,
-        cadran=ColorEnum.BLACK,
-        couleur_bracelet=ColorEnum.SILVER,
-        disponibilite=AvailabilityEnum.IN_STOCK,
-        # Vendeur (défauts moyens)
-        montres_vendues=50,
-        annonces_actives=10,
-        avis_vendeur=100,
-        expedition_rapide=1,
-        vendeur_confiance=1,
-        ponctualite=1
-    )
-    
-    result = evaluate_investment(complete)
-    
-    return {
-        "onglet": "general",
-        "analyse_basee_sur": "Caractéristiques générales uniquement",
-        "precision": "Estimation grossière",
-        "avertissement": "Matériaux et vendeur utilisent des valeurs par défaut",
-        "prediction": {
-            "prix_achat": result.prix_achat,
-            "prix_futur_estime": result.prix_futur_estime,
-            "plus_value": result.plus_value,
-            "roi_percent": result.roi_percent,
-            "roi_annualise": result.roi_annualise,
-            "evaluation": result.evaluation_simple,
-            "recommandation": result.recommandation,
-            "confiance": "Faible - complétez les onglets Matériaux et Vendeur"
-        },
-        "hypotheses_utilisees": {
-            "materiaux": {
-                "boitier": "Steel (défaut)",
-                "bracelet": "Steel (défaut)",
-                "verre": "Sapphire crystal (défaut)"
-            },
-            "vendeur": {
-                "reputation": "Moyenne (défaut)",
-                "avis": 100,
-                "confiance": "Standard"
-            }
-        },
-        "prochaine_etape": "Rendez-vous dans l'onglet Matériaux pour affiner la prédiction"
-    }
-
-@app.post("/materials")
-def analyze_materials(data: MaterialsTab):
-    """
-    Étape 2: Analyse basée UNIQUEMENT sur l'onglet Matériaux
-    Général et vendeur = valeurs par défaut
-    """
-    if not MODELS_READY:
-        raise HTTPException(503, "Modèles non chargés")
-    
-    # Valeurs par défaut pour Général (montre "standard" milieu de gamme)
-    complete = CompleteWatchInput(
-        # Général (défauts)
-        prix_achat=15000,  # Prix moyen par défaut
-        marque=BrandEnum.OMEGA,  # Marque mid-tier par défaut
-        etat=ConditionEnum.LIKE_NEW,
-        mouvement=MovementEnum.AUTOMATIC,
-        genre=GenderEnum.MEN,
-        annee_production=2020,
-        forme=ShapeEnum.ROUND,
-        surface_cadran=40.0,
-        contenu_livraison=DeliveryEnum.BOX_PAPERS,
-        horizon_annees=3,
-        # Matériaux (depuis input)
-        materiau_boitier=data.materiau_boitier,
-        materiau_bracelet=data.materiau_bracelet,
-        verre=data.verre,
-        cadran=data.cadran,
-        couleur_bracelet=data.couleur_bracelet,
-        disponibilite=data.disponibilite,
-        # Vendeur (défauts)
-        montres_vendues=50,
-        annonces_actives=10,
-        avis_vendeur=100,
-        expedition_rapide=1,
-        vendeur_confiance=1,
-        ponctualite=1
-    )
-    
-    result = evaluate_investment(complete)
-    
-    # Analyse spécifique matériaux
-    premium_materials = []
-    if data.materiau_boitier in [MaterialEnum.GOLD, MaterialEnum.PLATINUM, MaterialEnum.ROSE_GOLD, MaterialEnum.WHITE_GOLD]:
-        premium_materials.append(f"Boîtier {data.materiau_boitier.value} (+valeur)")
-    if data.materiau_bracelet in [MaterialEnum.GOLD, MaterialEnum.PLATINUM, MaterialEnum.ROSE_GOLD, MaterialEnum.WHITE_GOLD]:
-        premium_materials.append(f"Bracelet {data.materiau_bracelet.value} (+valeur)")
-    if data.verre == CrystalEnum.SAPPHIRE:
-        premium_materials.append("Verre saphir (standard qualité)")
-    
-    return {
-        "onglet": "materials",
-        "analyse_basee_sur": "Matériaux uniquement",
-        "precision": "Estimation matériaux isolés",
-        "avertissement": "Caractéristiques générales et vendeur utilisent des valeurs par défaut",
-        "prediction": {
-            "prix_achat": result.prix_achat,
-            "prix_futur_estime": result.prix_futur_estime,
-            "plus_value": result.plus_value,
-            "roi_percent": result.roi_percent,
-            "roi_annualise": result.roi_annualise,
-            "evaluation": result.evaluation_simple,
-            "recommandation": result.recommandation,
-            "confiance": "Moyenne - complétez l'onglet Vendeur pour plus de précision"
-        },
-        "analyse_materiaux": {
-            "composition": {
-                "boitier": data.materiau_boitier.value,
-                "bracelet": data.materiau_bracelet.value,
-                "verre": data.verre.value,
-                "cadran": data.cadran.value
-            },
-            "qualite_percue": "Premium" if len(premium_materials) >= 2 else "Standard",
-            "elements_premium": premium_materials if premium_materials else ["Acier standard"],
-            "impact_estime": "Élevé" if len(premium_materials) >= 2 else "Modéré"
-        },
-        "hypotheses_utilisees": {
-            "general": {
-                "marque": "Omega (défaut)",
-                "prix_achat": "15 000$ (défaut)",
-                "annee": 2020
-            },
-            "vendeur": "Standard (défaut)"
-        },
-        "prochaine_etape": "Rendez-vous dans l'onglet Vendeur pour la prédiction finale"
-    }
-
-@app.post("/seller")
-def analyze_seller(data: SellerTab):
-    """
-    Étape 3: Analyse basée UNIQUEMENT sur l'onglet Vendeur
-    Général et matériaux = valeurs par défaut
-    """
-    if not MODELS_READY:
-        raise HTTPException(503, "Modèles non chargés")
-    
-    # Valeurs par défaut pour Général et Matériaux
-    complete = CompleteWatchInput(
-        # Général (défauts)
-        prix_achat=15000,
-        marque=BrandEnum.OMEGA,
-        etat=ConditionEnum.LIKE_NEW,
-        mouvement=MovementEnum.AUTOMATIC,
-        genre=GenderEnum.MEN,
-        annee_production=2020,
-        forme=ShapeEnum.ROUND,
-        surface_cadran=40.0,
-        contenu_livraison=DeliveryEnum.BOX_PAPERS,
-        horizon_annees=3,
-        # Matériaux (défauts)
-        materiau_boitier=MaterialEnum.STEEL,
-        materiau_bracelet=MaterialEnum.STEEL,
-        verre=CrystalEnum.SAPPHIRE,
-        cadran=ColorEnum.BLACK,
-        couleur_bracelet=ColorEnum.SILVER,
-        disponibilite=AvailabilityEnum.IN_STOCK,
-        # Vendeur (depuis input)
-        montres_vendues=data.montres_vendues,
-        annonces_actives=data.annonces_actives,
-        avis_vendeur=data.avis_vendeur,
-        expedition_rapide=data.expedition_rapide,
-        vendeur_confiance=data.vendeur_confiance,
-        ponctualite=data.ponctualite
-    )
-    
-    result = evaluate_investment(complete)
-    
-    # Analyse spécifique vendeur
-    reputation_score = (data.expedition_rapide + data.vendeur_confiance + data.ponctualite) / 3
-    activite_ratio = data.montres_vendues / max(data.annonces_actives, 1)
-    
-    qualite_vendeur = "Excellente" if reputation_score >= 0.9 and data.avis_vendeur > 200 else \
-                     "Bonne" if reputation_score >= 0.7 and data.avis_vendeur > 50 else \
-                     "Moyenne" if reputation_score >= 0.5 else "À vérifier"
-    
-    return {
-        "onglet": "seller",
-        "analyse_basee_sur": "Profil vendeur uniquement",
-        "precision": "Analyse risque transactionnel",
-        "avertissement": "Caractéristiques montre et matériaux utilisent des valeurs par défaut",
-        "prediction": {
-            "prix_achat": result.prix_achat,
-            "prix_futur_estime": result.prix_futur_estime,
-            "plus_value": result.plus_value,
-            "roi_percent": result.roi_percent,
-            "roi_annualise": result.roi_annualise,
-            "evaluation": result.evaluation_simple,
-            "recommandation": result.recommandation,
-            "confiance": "Variable selon qualité vendeur"
-        },
-        "analyse_vendeur": {
-            "profil": {
-                "qualite": qualite_vendeur,
-                "reputation_score": round(reputation_score * 100, 1),
-                "nb_avis": data.avis_vendeur,
-                "experience": "Confirmé" if data.montres_vendues > 100 else "Débutant"
-            },
-            "fiabilite": {
-                "expedition_rapide": bool(data.expedition_rapide),
-                "vendeur_verifie": bool(data.vendeur_confiance),
-                "ponctuel": bool(data.ponctualite)
-            },
-            "activite": {
-                "montres_vendues": data.montres_vendues,
-                "annonces_actives": data.annonces_actives,
-                "ratio_rotation": round(activite_ratio, 2)
-            },
-            "impact_transaction": "Faible risque" if qualite_vendeur == "Excellente" else "Risque modéré" if qualite_vendeur == "Bonne" else "Attention requise"
-        },
-        "hypotheses_utilisees": {
-            "general": "Montre Omega 15k$ (défaut)",
-            "materiaux": "Acier standard (défaut)"
-        },
-        "note_finale": "Pour une prédiction précise, utilisez /analyze avec toutes les données réelles"
     }
 
 @app.post("/analyze", response_model=InvestmentResult)
@@ -1251,10 +1003,8 @@ if __name__ == "__main__":
     print("📚 Documentation: http://localhost:8000/docs")
     print("🔍 Health Check:  http://localhost:8000/health")
     print("\nEndpoints:")
-    print("   POST /general    → Analyse onglet Général")
-    print("   POST /materials  → Analyse onglet Matériaux (nécessite GeneralTab)")
-    print("   POST /seller     → Analyse onglet Vendeur (nécessite GeneralTab)")
     print("   POST /analyze    → Analyse complète (tous onglets)")
+    print("   POST /explain    → Explications XAI")
     print("   GET  /options    → Options dropdowns")
     print("="*60 + "\n")
     uvicorn.run(app, host="0.0.0.0", port=8000)

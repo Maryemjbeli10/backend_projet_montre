@@ -688,17 +688,17 @@ function ToggleCard({ title, description, checked, onChange, icon }) {
 
 function MetricCard({ label, value, icon, highlight, positive }) {
   return (
-    <div className={`p-4 rounded-xl border ${
-      highlight ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[#1a1a1a] border-white/10'
+    <div className={`p-4 rounded-xl border transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-amber-500/10 cursor-pointer group ${
+      highlight ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[#1a1a1a] border-white/10 hover:border-amber-500/30'
     }`}>
-      <div className="flex items-center gap-2 text-gray-400 mb-2">
-        {icon}
+      <div className="flex items-center gap-2 text-gray-400 mb-2 group-hover:text-amber-400 transition-colors">
+        <span className="transition-transform group-hover:scale-110 duration-300">{icon}</span>
         <span className="text-sm">{label}</span>
       </div>
-      <div className={`text-xl font-bold ${
+      <div className={`text-xl font-bold transition-all duration-300 ${
         positive === true ? 'text-green-400' : 
         positive === false ? 'text-red-400' : 
-        highlight ? 'text-amber-400' : 'text-white'
+        highlight ? 'text-amber-400' : 'text-white group-hover:text-amber-200'
       }`}>
         {value}
       </div>
@@ -722,18 +722,19 @@ function ProbabilityBar({ label, value, color }) {
   );
 }
 
+
 // Page de résultats avec XAI intégré et section Recommandation
 function ResultsPage({ result, onBack, onExplain, isLoading }) {
   const [activeXaiTab, setActiveXaiTab] = useState('shap');
   
   const getEvaluationColor = (evaluation) => {
-    switch (evaluation) {
-      case 'Bon': return 'text-green-400 bg-green-400/10 border-green-400/30';
-      case 'Moyen': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30';
-      case 'Risqué': return 'text-red-400 bg-red-400/10 border-red-400/30';
-      default: return 'text-gray-400 bg-gray-400/10 border-gray-400/30';
-    }
-  };
+  switch (evaluation) {
+    case 'Bon': return 'text-green-400 bg-green-500/10 border border-green-500/30';
+    case 'Moyen': return 'text-yellow-400 bg-yellow-500/10 border border-yellow-500/30';
+    case 'Risqué': return 'text-red-400 bg-red-500/10 border border-red-500/30';
+    default: return 'text-gray-400 bg-gray-500/10 border border-gray-500/30';
+  }
+};
 
   const getEvaluationIcon = (evaluation) => {
     switch (evaluation) {
@@ -776,16 +777,56 @@ function ResultsPage({ result, onBack, onExplain, isLoading }) {
         </div>
 
         {/* Main Result Card */}
-        <div className="bg-[#111] rounded-2xl border border-white/10 p-8 mb-6">
-          <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-xl border ${getEvaluationColor(result.evaluation_simple)} mb-6`}>
-            {getEvaluationIcon(result.evaluation_simple)}
-            <div>
-              <div className="text-sm opacity-80">Évaluation</div>
-              <div className="text-xl font-bold">{result.evaluation_simple}</div>
-            </div>
-          </div>
-
-          <h2 className="text-2xl font-bold mb-6 text-amber-400">{result.recommandation}</h2>
+<div className="bg-[#111] rounded-2xl border border-white/10 p-8 mb-6">
+  {/* NOUVEAU: Carte d'évaluation style capture 2 */}
+  <div className={`w-full p-6 rounded-xl mb-6 ${getEvaluationColor(result.evaluation_simple)} bg-opacity-20`}>
+    <div className="flex items-start gap-4">
+      {/* Icône médaille */}
+      <div className="flex-shrink-0">
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+          result.evaluation_simple === 'Bon' ? 'bg-green-500/20' :
+          result.evaluation_simple === 'Moyen' ? 'bg-yellow-500/20' :
+          'bg-red-500/20'
+        }`}>
+          {result.evaluation_simple === 'Bon' ? (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-green-400">
+              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" 
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <circle cx="12" cy="10" r="3" fill="currentColor"/>
+            </svg>
+          ) : result.evaluation_simple === 'Moyen' ? (
+            <Info size={24} className="text-yellow-400" />
+          ) : (
+            <XCircle size={24} className="text-red-400" />
+          )}
+        </div>
+      </div>
+      
+      {/* Texte */}
+      <div className="flex-1">
+        <h2 className={`text-2xl font-bold mb-2 ${
+          result.evaluation_simple === 'Bon' ? 'text-green-400' :
+          result.evaluation_simple === 'Moyen' ? 'text-yellow-400' :
+          'text-red-400'
+        }`}>
+          {result.recommandation}
+        </h2>
+        <p className="text-gray-300 text-sm leading-relaxed">
+          {result.roi_percent >= 25 ? (
+            "Cette montre présente un excellent potentiel de valorisation."
+          ) : result.roi_percent >= 15 ? (
+            "Cette montre présente un bon potentiel de valorisation."
+          ) : result.roi_percent >= 5 ? (
+            "Cette montre présente un potentiel de valorisation modéré."
+          ) : result.roi_percent >= 0 ? (
+            "Cette montre présente un potentiel de valorisation incertain."
+          ) : (
+            "Cette montre présente un profil d'investissement défavorable."
+          )}
+        </p>
+      </div>
+    </div>
+  </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <MetricCard 
