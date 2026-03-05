@@ -61,42 +61,47 @@ app.add_middleware(
 # ============================================================
 
 class BrandEnum(str, Enum):
-    ROLEX = "Rolex"
-    PATEK_PHILIPPE = "Patek Philippe"
-    AUDEMARS_PIGUET = "Audemars Piguet"
-    OMEGA = "Omega"
-    CARTIER = "Cartier"
-    TUDOR = "Tudor"
-    TAG_HEUER = "TAG Heuer"
-    BREITLING = "Breitling"
-    IWC = "IWC"
-    JAEGER_LECOULTRE = "Jaeger-LeCoultre"
-    PANERAI = "Panerai"
-    HUBLOT = "Hublot"
-    ZENITH = "Zenith"
-    SEIKO = "Seiko"
-    CASIO = "Casio"
-    CITIZEN = "Citizen"
-    TISSOT = "Tissot"
-    LONGINES = "Longines"
-    RADO = "Rado"
-    HAMILTON = "Hamilton"
-    CYMA = "Cyma"
-    CONCORD = "Concord"
-    SQUALE = "Squale"
-    GUCCI = "Gucci"
-    CUERVO_Y_SOBRINOS = "Cuervo y Sobrinos"
-    NORQAIN = "Norqain"
-    DAVOSA = "Davosa"
-    POLJOT = "Poljot"
-    REVUE_THOMMEN = "Revue Thommen"
-    CWC = "CWC"
-    RICHARD_MILLE = "Richard Mille"
-    GREUBEL_FORSEY = "Greubel Forsey"
-    GRAF = "Graf"
-    LAURENT_FERRIER = "Laurent Ferrier"
-    DOLCE_GABBANA = "Dolce & Gabbana"
-    MERCURE = "Mercure"
+    Patek_Philippe = "Patek Philippe"
+    Richard_Mille = "Richard Mille"
+    Rolex = "Rolex"
+    Roger_Dubuis = "Roger Dubuis"
+    Audermars_Piguet = "Audemars Piguet"
+    De_Bethune = "De Bethune"
+    Greubel_Forsey = "Greubel Forsey"
+    Jacob_And_Co = "Jacob & Co."
+    F_P_Journe = "F.P. Journe"
+    A_Lange_Sohne = "A. Lange & Söhne"
+    Christophe_Claret = "Christophe Claret"
+    Bovet = "Bovet"
+    Daniel_Roth = "Daniel Roth"
+    Armin_Strom = "Armin Strom"
+    Van_Cleef_Arpels = "Van Cleef & Arpels"
+    Louis_Moinet = "Louis Moinet"
+    Mb_and_Friends = "MB&F"
+    Jaquet_droz = "Jaquet Droz"
+    Urwerk = "Urwerk"
+    Harry_Winston = "Harry Winston"
+    Graham = "Graham"
+    Ulysse_Nardin = "Ulysse Nardin"
+    Parmigiani_Fleurier = "Parmigiani Fleurier"
+    Laurent_Ferrier = "Laurent Ferrier"
+    H_Moser_Cie = "H. Moser & Cie"
+    Gronefeld = "Grönefeld"
+    Dewitt = "Dewitt"
+    Breguet = "Breguet"
+    Girard_Perregaux = "Girard Perregaux"
+    Corum = "Corum"
+    Andersen_Geneve = "Andersen Genève"
+    Vacheron_Constantin = "Vacheron Constantin"
+    Vianney_Halter = "Vianney Halter"
+    Bulgari = "Bulgari"
+    Moritz_Grossmann = "Moritz Grossmann"
+    Graf = "Graf"
+    Piaget = "Piaget"
+    Ludovic_Ballouard = "Ludovic Ballouard"
+    Strom = "Strom"
+    Czapek = "Czapek"
+    Chopard = "Chopard"
 
 
 class ConditionEnum(str, Enum):
@@ -113,6 +118,8 @@ class MovementEnum(str, Enum):
     AUTOMATIC = "Automatic"
     MANUAL = "Manual winding"
     QUARTZ = "Quartz"
+    Solar = "Solar"
+    Smartwatch = "Smartwatch"
 
 class GenderEnum(str, Enum):
     MEN = "Men's watch"
@@ -120,12 +127,8 @@ class GenderEnum(str, Enum):
     UNISEX = "Unisex"
 
 class ShapeEnum(str, Enum):
-    ROUND = "Round"
-    SQUARE = "Square"
-    RECTANGULAR = "Rectangular"
-    TONNEAU = "Tonneau"
-    CUSHION = "Cushion"
-    OCTAGONAL = "Octagonal"
+    Circular = "Circular"
+    Rectangular = "Rectangular"
 
 class MaterialEnum(str, Enum):
     STEEL = "Steel"
@@ -136,12 +139,24 @@ class MaterialEnum(str, Enum):
     TITANIUM = "Titanium"
     CERAMIC = "Ceramic"
     CARBON = "Carbon"
+    GOLD_PLATED = "Gold-plated"
     YELLOW_GOLD = "Yellow gold"
     PLASTIC = "Plastic"
     RED_GOLD = "Red gold"
     BRONZE = "Bronze"
     ALUMINUM = "Aluminum"
     SAPPIRE_CRYSTAL = "Sapphire crystal"
+    Brass = "Brass"
+    Snake_Skin = "Snake skin"
+    Crocodile_Skin = "Crocodile skin"
+    Shark_Skin = "Shark skin"
+    Ostrich_Skin = "Ostrich skin"
+    Leather = "Leather"
+    Rubber = "Rubber"
+    Palladium = "Palladium"
+    TUNGSTEN = "Tungsten"
+    SILVER = "Silver"
+    
 
 class CrystalEnum(str, Enum):
     SAPPHIRE = "Sapphire crystal"
@@ -165,12 +180,21 @@ class ColorEnum(str, Enum):
     PURPLE = "Purple"
     BRONZE = "Bronze"
     RED = "Red"
+    Gold = "Gold"
+    Skeletonized = "Skeletonized"
+    Mother_of_Pearl = "Mother of Pearl"
+    Gold_Solid = "Gold (Solid)"
+    Silver_Solid = "Silver (Solid)"
+    Yellow = "Yellow"
+    Bordeaux = "Bordeaux"
+    Turquoise = "Turquoise"
+    Meteorite = "Meteorite"
 
 class AvailabilityEnum(str, Enum):
     IN_STOCK = "Item is in stock"
-    PARTNER = "Item is in stock at a partner boutique"
-    SERVICING = "Item is being serviced"
-    HOLD = "Item is on hold"
+    PARTNER = "Item needs to be procured"
+    SERVICING = "Item available on request"
+    
 
 class DeliveryEnum(str, Enum):
     BOX_PAPERS = "Original box, original papers"
@@ -194,7 +218,7 @@ class GeneralTab(BaseModel):
         le=10000000
     )
     marque: BrandEnum = Field(
-        default=BrandEnum.ROLEX,
+        default=BrandEnum.Patek_Philippe,
         alias="Marque"
     )
     etat: ConditionEnum = Field(
@@ -216,7 +240,7 @@ class GeneralTab(BaseModel):
         le=2030
     )
     forme: ShapeEnum = Field(
-        default=ShapeEnum.ROUND,
+        default=ShapeEnum.Circular,
         alias="Forme"
     )
     surface_cadran: float = Field(
@@ -307,12 +331,12 @@ class CompleteWatchInput(BaseModel):
 
     # Général
     prix_achat: float = Field(default=10000, alias="Prix d'achat ($)", gt=0 , ge=1000)
-    marque: BrandEnum = Field(default=BrandEnum.ROLEX, alias="Marque")
+    marque: BrandEnum = Field(default=BrandEnum.Patek_Philippe, alias="Marque")
     etat: ConditionEnum = Field(default=ConditionEnum.LIKE_NEW, alias="État")
     mouvement: MovementEnum = Field(default=MovementEnum.AUTOMATIC, alias="Mouvement")
     genre: GenderEnum = Field(default=GenderEnum.MEN, alias="Genre")
     annee_production: int = Field(default=2020, alias="Année de production", ge=1900, le=2030)
-    forme: ShapeEnum = Field(default=ShapeEnum.ROUND, alias="Forme")
+    forme: ShapeEnum = Field(default=ShapeEnum.Circular, alias="Forme")
     surface_cadran: float = Field(default=40.0, alias="Surface du cadran (mm²)", gt=0)
     contenu_livraison: DeliveryEnum = Field(default=DeliveryEnum.BOX_PAPERS, alias="Contenu de la livraison")
 
@@ -476,20 +500,61 @@ def prepare_data(watch: CompleteWatchInput) -> pd.DataFrame:
     }
 
     df = pd.DataFrame([data])
+    df = df[FEATURES]  
     return df
 
 def estimate_market_price(brand: str, age: int, condition: str) -> float:
     """Estime le prix du marché actuel"""
     base_prices = {
-        "Rolex": 12000, "Patek Philippe": 40000, "Audemars Piguet": 35000,
-        "Omega": 6000, "Cartier": 8000, "Tudor": 4000, "TAG Heuer": 3000,
-        "Breitling": 5000, "IWC": 7000, "Jaeger-LeCoultre": 8000,
-        "Panerai": 7000, "Hublot": 15000, "Zenith": 6000,
-        "Seiko": 500, "Casio": 200, "Citizen": 300, "Tissot": 400,
-        "Longines": 1500, "Rado": 2000, "Hamilton": 800
-    }
+    # === ULTRA-LUXE / GRANDES COMPLICATIONS ===
+    "Patek Philippe": 5999995.0,
+    "Richard Mille": 3200000.0,
+    "Rolex": 1350000.0,
+    "Audemars Piguet": 988888.0,
+    "De Bethune": 660000.0,
+    "Greubel Forsey": 641354.0,
+    "Jacob & Co.": 629067.0,
+    "F.P. Journe": 531307.0,           # F.P.Journe dans dataset
+    "A. Lange & Söhne": 500000.0,
+    "Christophe Claret": 458582.0,
+    "Bovet": 458135.0,
+    "Daniel Roth": 443761.0,
+    "Armin Strom": 429000.0,
+    "Van Cleef & Arpels": 427315.0,
+    "Louis Moinet": 399500.0,
+    "MB&F": 370518.0,                  # Mb&f dans dataset
+    "Jaquet Droz": 343867.0,           # Jaquet-Droz dans dataset
+    "Urwerk": 327039.0,
+    "Harry Winston": 305000.0,
     
-    base = base_prices.get(brand, 1000)
+    # === HAUTE HORLOGERIE ===
+    "Graham": 294840.0,
+    "Ulysse Nardin": 274725.0,
+    "Parmigiani Fleurier": 248000.0,
+    "Laurent Ferrier": 240000.0,
+    "H. Moser & Cie": 231472.0,        # H.Moser & Cie. dans dataset
+    "Grönefeld": 210745.0,
+    "Dewitt": 210000.0,
+    "Breguet": 205000.0,
+    "Girard Perregaux": 192700.0,      # Girard Perregaux dans dataset
+    "Corum": 189700.0,
+    "Andersen Genève": 170000.0,
+    "Vacheron Constantin": 165875.0,
+    "Vianney Halter": 158517.0,
+    "Bulgari": 155000.0,
+    "Moritz Grossmann": 139700.0,
+    "Graf": 139400.0,
+    "Piaget": 137700.0,
+    "Ludovic Ballouard": 135150.0,
+    "Strom": 132456.0,
+    "Czapek": 129236.0,
+    
+    # === LUXE CONTEMPORAIN ===
+    "Roger Dubuis": 1197803.0,
+    "Chopard": 24600.0
+}
+    
+    base = base_prices.get(brand, 10000)
     
     if age <= 1:
         age_factor = 0.85
@@ -509,8 +574,7 @@ def estimate_market_price(brand: str, age: int, condition: str) -> float:
     }
     condition_factor = condition_factors.get(condition, 0.70)
     
-    brand_premium = 1.2 if brand in ["Rolex", "Patek Philippe", "Audemars Piguet"] else \
-                    0.7 if brand in ["Seiko", "Casio", "Citizen"] else 1.0
+    brand_premium = 1.2 if brand in ["Rolex", "Patek Philippe", "Audemars Piguet"] else 1.0
     
     return max(100, base * age_factor * condition_factor * brand_premium)
 
@@ -535,7 +599,7 @@ def evaluate_investment(watch: CompleteWatchInput) -> InvestmentResult:
 
     # Classification - déterminer la classe prédite
     proba = clf_model.predict_proba(X)[0]
-    class_names = ["Risqué", "Moyen", "Bon investissement"]
+    class_names = clf_model.classes_
     predicted_class_idx = np.argmax(proba)
     predicted_class = class_names[predicted_class_idx]
     predicted_proba = proba[predicted_class_idx]
