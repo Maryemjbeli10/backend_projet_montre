@@ -307,7 +307,7 @@ function App() {
                   label="Marque *" 
                   value={formData.marque} 
                   onChange={(v) => updateField('marque', v)}
-                  options={['', 'Rolex', 'Patek Philippe', 'Audemars Piguet', 'Omega', 'Cartier', 'Tudor', 'TAG Heuer', 'Breitling', 'IWC', 'Jaeger-LeCoultre', 'Panerai', 'Hublot', 'Zenith', 'Seiko', 'Casio', 'Citizen', 'Tissot', 'Longines', 'Rado', 'Hamilton', 'Cyma', 'Concord', 'Squale', 'Gucci', 'Cuervo y Sobrinos', 'Norqain', 'Davosa', 'Poljot', 'Revue Thommen', 'CWC', 'Richard Mille', 'Greubel Forsey', 'Graf', 'Laurent Ferrier', 'Dolce & Gabbana', 'Mercure']}
+                  options={['', 'Patek Philippe', 'Richard Mille', 'Rolex', 'Roger Dubuis', 'Audemars Piguet', 'De Bethune', 'Greubel Forsey', 'Jacob & Co.', 'F.P. Journe', 'A. Lange & Söhne', 'Christophe Claret', 'Bovet', 'Daniel Roth', 'Armin Strom', 'Van Cleef & Arpels', 'Louis Moinet', 'MB&F', 'Jaquet Droz', 'Urwerk', 'Harry Winston', 'Graham', 'Ulysse Nardin', 'Parmigiani Fleurier', 'Laurent Ferrier', 'H. Moser & Cie', 'Grönefeld', 'Dewitt', 'Breguet', 'Girard Perregaux', 'Corum', 'Andersen Genève', 'Vacheron Constantin', 'Vianney Halter', 'Bulgari', 'Moritz Grossmann', 'Graf', 'Piaget', 'Ludovic Ballouard', 'Strom', 'Czapek','Chopard']}
                   icon={<Watch size={16} />}
                   required
                   error={touchedFields.marque && !isFieldValid('marque')}
@@ -316,7 +316,7 @@ function App() {
                   label="Mouvement *" 
                   value={formData.mouvement} 
                   onChange={(v) => updateField('mouvement', v)}
-                  options={['', 'Automatic', 'Manual winding', 'Quartz']}
+                  options={['', 'Automatic', 'Manual winding', 'Quartz', 'Solar', 'Smartwatch']}
                   icon={<Settings size={16} />}
                   required
                   error={touchedFields.mouvement && !isFieldValid('mouvement')}
@@ -364,7 +364,7 @@ function App() {
                   label="Forme *" 
                   value={formData.forme} 
                   onChange={(v) => updateField('forme', v)}
-                  options={['', 'Round', 'Square', 'Rectangular', 'Tonneau', 'Cushion', 'Octagonal']}
+                  options={['', 'Circular', 'Rectangular']}
                   icon={<Maximize size={16} />}
                   required
                   error={touchedFields.forme && !isFieldValid('forme')}
@@ -407,7 +407,7 @@ function App() {
                   label="Matériau du boîtier *" 
                   value={formData.materiau_boitier} 
                   onChange={(v) => updateField('materiau_boitier', v)}
-                  options={['', 'Steel', 'Yellow gold', 'Rose gold', 'White gold', 'Platinum', 'Titanium', 'Ceramic', 'Carbon', 'Plastic', 'Red gold', 'Bronze', 'Aluminum', 'Sapphire crystal']}
+                  options={['', 'Steel', 'Yellow gold', 'Rose gold', 'White gold', 'Platinum', 'Titanium', 'Ceramic', 'Carbon', 'Plastic', 'Red gold', 'Bronze', 'Aluminum', 'Sapphire crystal', 'Brass', 'Palladium', 'Tungsten', 'Silver', 'Gold-plated']}
                   icon={<Gem size={16} />}
                   required
                   error={touchedFields.materiau_boitier && !isFieldValid('materiau_boitier')}
@@ -416,7 +416,7 @@ function App() {
                   label="Matériau du bracelet *" 
                   value={formData.materiau_bracelet} 
                   onChange={(v) => updateField('materiau_bracelet', v)}
-                  options={['', 'Steel', 'Yellow gold', 'Rose gold', 'White gold', 'Platinum', 'Titanium', 'Ceramic', 'Carbon', 'Plastic', 'Red gold', 'Bronze', 'Aluminum', 'Sapphire crystal']}
+                  options={['', 'Steel', 'Yellow gold', 'Rose gold', 'White gold', 'Platinum', 'Titanium', 'Ceramic', 'Carbon', 'Plastic', 'Red gold', 'Bronze', 'Aluminum', 'Sapphire crystal', 'Brass', 'Snake skin', 'Crocodile skin', 'Shark skin', 'Ostrich skin', 'Leather', 'Rubber']}
                   icon={<Gem size={16} />}
                   required
                   error={touchedFields.materiau_bracelet && !isFieldValid('materiau_bracelet')}
@@ -434,7 +434,7 @@ function App() {
                   label="Cadran *" 
                   value={formData.cadran} 
                   onChange={(v) => updateField('cadran', v)}
-                  options={['', 'Black', 'Silver', 'White', 'Blue', 'Green', 'Brown', 'Champagne', 'Grey', 'Steel', 'Orange', 'Pink', 'Purple', 'Bronze', 'Red']}
+                  options={['', 'Black', 'Silver', 'White', 'Blue', 'Green', 'Brown', 'Champagne', 'Grey', 'Steel', 'Orange', 'Pink', 'Purple', 'Bronze', 'Red', 'Gold', 'Skeletonized', 'Mother of Pearl', 'Gold (Solid)', 'Silver (Solid)', 'Yellow', 'Bordeaux', 'Turquoise', 'Meteorite']}
                   icon={<Maximize size={16} />}
                   required
                   error={touchedFields.cadran && !isFieldValid('cadran')}
@@ -443,7 +443,7 @@ function App() {
                   label="Couleur du bracelet *" 
                   value={formData.couleur_bracelet} 
                   onChange={(v) => updateField('couleur_bracelet', v)}
-                  options={['', 'Black', 'Silver', 'White', 'Blue', 'Green', 'Brown', 'Champagne', 'Grey', 'Steel', 'Orange', 'Pink', 'Purple', 'Bronze', 'Red']}
+                  options={['', 'Black', 'Silver', 'White', 'Blue', 'Green', 'Brown','Grey', 'Steel', 'Orange', 'Pink', 'Purple', 'Bronze', 'Red', 'Gold', 'Bordeaux','Yellow']}
                   icon={<Settings size={16} />}
                   required
                   error={touchedFields.couleur_bracelet && !isFieldValid('couleur_bracelet')}
@@ -452,7 +452,7 @@ function App() {
                   label="Disponibilité *" 
                   value={formData.disponibilite} 
                   onChange={(v) => updateField('disponibilite', v)}
-                  options={['', 'Item is in stock', 'Item is in stock at a partner boutique', 'Item is being serviced', 'Item is on hold']}
+                  options={['', 'Item is in stock', 'Item needs to be procured', 'Item available on request']}
                   icon={<Package size={16} />}
                   required
                   error={touchedFields.disponibilite && !isFieldValid('disponibilite')}
