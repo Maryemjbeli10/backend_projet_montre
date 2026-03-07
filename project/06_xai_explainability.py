@@ -16,6 +16,15 @@ from typing import Dict, List, Tuple, Any
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import LabelEncoder
+import mlflow
+
+# chemin du projet
+ROOT = Path(__file__).resolve().parent
+
+# dossier mlruns dans le projet
+MLFLOW_DIR = ROOT / "mlruns"
+
+mlflow.set_tracking_uri(f"file:///{MLFLOW_DIR}")
 
 # Suppression des warnings
 warnings.filterwarnings('ignore')

@@ -19,7 +19,33 @@ import joblib
 from pathlib import Path
 import sys
 
-warnings.filterwarnings('ignore')
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+
+import os
+import mlflow
+import mlflow.sklearn
+
+import time
+import os
+
+mlflow_uri = os.environ.get("MLFLOW_TRACKING_URI", "http://mlflow-server:5000")
+mlflow.set_tracking_uri(mlflow_uri)
+
+# Attendre que MLflow soit prêt
+max_retries = 10
+for i in range(max_retries):
+    try:
+        mlflow.set_experiment("Luxury_Watch_Price_Prediction")
+        print(f"✅ Connecté à MLflow: {mlflow_uri}")
+        break
+    except Exception as e:
+        print(f"⏳ Tentative {i+1}/{max_retries} - MLflow non prêt: {e}")
+        time.sleep(5)
+else:
+    raise Exception("Impossible de connecter à MLflow")
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 
 try:
     import xgboost as xgb
@@ -176,12 +202,12 @@ def get_classifier_config(model_name):
         'gradient_boosting': {
             'name': 'GradientBoosting',
             'model': GradientBoostingClassifier(
-                n_estimators=150,
-                max_depth=5,
+                n_estimators=50,
+                max_depth=3,
                 learning_rate=0.1,
                 random_state=RANDOM_STATE
             ),
-            'params': {'n_estimators': 150, 'max_depth': 5, 'learning_rate': 0.1},
+            'params': {'n_estimators': 100, 'max_depth': 3, 'learning_rate': 0.1},
             'needs_imputer': True,
             'needs_label_encoder': False
         },
@@ -293,6 +319,17 @@ def train_single_classifier(model_name, X_train, y_train, X_test, y_test, roi_te
     
     mlflow.set_experiment("Luxury_Watch_Investment_Classification")
     
+    skops_trusted_types = None
+    if model_name.lower() == "gradient_boosting":
+        skops_trusted_types = [
+            "numpy.dtype",
+            "sklearn._loss.link.IdentityLink",
+            "sklearn._loss.link.Interval",
+            "sklearn._loss.loss.HalfSquaredError"
+        ]
+    elif model_name.lower() == "xgboost":
+        skops_trusted_types = ["xgboost.core.Booster", "xgboost.sklearn.XGBClassifier"]
+ 
     with mlflow.start_run(run_name=f"{config['name']}_Classifier"):
         
         print("Entraînement...")
@@ -306,8 +343,17 @@ def train_single_classifier(model_name, X_train, y_train, X_test, y_test, roi_te
         mlflow.log_param('model_type', config['name'])
         mlflow.log_metric('accuracy', metrics['accuracy'])
         mlflow.log_metric('f1_weighted', metrics['f1_weighted'])
-        mlflow.sklearn.log_model(pipeline, f"classifier_{config['name'].lower()}")
-        
+        mlflow.sklearn.log_model(
+        sk_model=pipeline,
+        artifact_path=f"classifier_{config['name'].lower()}",
+        serialization_format="pickle",  # <-- skops fonctionne mais pickle est plus simple
+        pip_requirements=[
+            "scikit-learn==1.8.0",
+            "pandas",
+            "numpy",
+            "xgboost"
+        ]
+         )        
         print(f"\n{config['name']} loggé")
     
     return pipeline, metrics

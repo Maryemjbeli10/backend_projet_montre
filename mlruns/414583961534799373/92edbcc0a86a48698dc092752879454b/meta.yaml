@@ -1,0 +1,14 @@
+artifact_uri: file:///D:/Montres_Investissement/backend_projet_montre/mlruns/414583961534799373/92edbcc0a86a48698dc092752879454b/artifacts
+end_time: 1772821226425
+entry_point_name: ''
+experiment_id: '414583961534799373'
+lifecycle_stage: active
+run_id: 92edbcc0a86a48698dc092752879454b
+run_name: LogisticRegression_Classifier
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1772821199190
+status: 4
+tags: []
+user_id: tagho

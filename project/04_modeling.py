@@ -20,6 +20,28 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 import warnings
 warnings.filterwarnings('ignore')
 
+
+import mlflow.sklearn
+
+import time
+import os
+
+mlflow_uri = os.environ.get("MLFLOW_TRACKING_URI", "http://mlflow-server:5000")
+mlflow.set_tracking_uri(mlflow_uri)
+
+# Attendre que MLflow soit prêt
+max_retries = 10
+for i in range(max_retries):
+    try:
+        mlflow.set_experiment("Luxury_Watch_Price_Prediction")
+        print(f"✅ Connecté à MLflow: {mlflow_uri}")
+        break
+    except Exception as e:
+        print(f"⏳ Tentative {i+1}/{max_retries} - MLflow non prêt: {e}")
+        time.sleep(5)
+else:
+    raise Exception("Impossible de connecter à MLflow")
+
 try:
     import xgboost as xgb
     XGBOOST_AVAILABLE = True
@@ -289,6 +311,23 @@ def train_single_model(model_name, X_train, y_train, X_test, y_test, num_feature
     # MLflow
     mlflow.set_experiment("Luxury_Watch_Price_Prediction")
     
+        # Définir les types de confiance pour skops selon le modèle
+    skops_trusted_types = None
+    if model_name.lower() == "gradient_boosting":
+        skops_trusted_types = [
+            "numpy.dtype",
+            "sklearn._loss.link.IdentityLink",
+            "sklearn._loss.link.Interval",
+            "sklearn._loss.loss.HalfSquaredError"
+        ]
+    elif model_name.lower() == "xgboost":
+        skops_trusted_types = [
+            "xgboost.core.Booster",
+            "xgboost.sklearn.XGBRegressor"
+        ]
+    else:
+        skops_trusted_types = None
+
     with mlflow.start_run(run_name=f"{config['name']}_Price_Prediction"):
         
         # Entraînement
@@ -321,9 +360,19 @@ def train_single_model(model_name, X_train, y_train, X_test, y_test, num_feature
         
         for key, value in metrics.items():
             mlflow.log_metric(key, value)
-        
-        mlflow.sklearn.log_model(pipeline, f"price_prediction_{config['name'].lower()}")
-        
+
+
+        mlflow.sklearn.log_model(
+        sk_model=pipeline,
+        artifact_path=f"price_prediction_{config['name'].lower()}",
+        serialization_format="pickle",  # ← plus compatible UI
+        pip_requirements=[
+            "scikit-learn==1.8.0",
+            "pandas",
+            "numpy",
+            "xgboost"
+        ]
+    )       
         print(f"\n✅ {config['name']} loggé dans MLflow")
     
     return pipeline, metrics

@@ -1,0 +1,142 @@
+services:
+  mlflow-db:
+    image: mysql:8.0
+    container_name: luxury_watch_mlflow_db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: mlflow
+      MYSQL_USER: mlflow
+      MYSQL_PASSWORD: mlflowpass
+    volumes:
+      - mlflow_db_data:/var/lib/mysql
+    networks:
+      - watch_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  mlflow-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: luxury_watch_mlflow_server
+    environment:
+      MLFLOW_BACKEND_STORE_URI: mysql+pymysql://mlflow:mlflowpass@mlflow-db:3306/mlflow
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: /mlflow/artifacts
+      MLFLOW_HOST: 0.0.0.0
+      MLFLOW_PORT: 5000
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    ports:
+      - "5000:5000"
+    networks:
+      - watch_network
+    depends_on:
+      mlflow-db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  model-trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: luxury_watch_trainer
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+      - PYTHONPATH=/app
+      - FORCE_TRAIN=${FORCE_TRAIN:-false}
+    volumes:
+      - ./project:/app/project
+      - models_data:/app/data/processed
+      - mlflow_artifacts:/mlflow/artifacts
+    networks:
+      - watch_network
+    depends_on:
+      mlflow-server:
+        condition: service_healthy
+    command: >
+      bash -c "
+        set -e &&
+        echo '📊 Vérification des modèles...' &&
+        if [ ! -f '/app/data/processed/best_price_model.pkl' ] || [ '$${FORCE_TRAIN}' = 'true' ]; then
+          echo '🚀 Démarrage entraînement...' &&
+          echo '⏳ Étape 1/2: Régression des prix...' &&
+          python -m project.04_modeling &&
+          echo '⏳ Étape 2/2: Classification...' &&
+          python -m project.05_classification &&
+          echo '✅ Entraînement terminé avec succès!';
+        else
+          echo '✅ Modèles déjà présents dans le volume partagé';
+        fi &&
+        echo '🏁 Service trainer terminé' &&
+        exit 0
+      "
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: luxury_watch_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+      - PYTHONPATH=/app
+    volumes:
+      - ./project:/app/project
+      - models_data:/app/data/processed:ro
+      - mlflow_artifacts:/mlflow/artifacts:ro
+    networks:
+      - watch_network
+    depends_on:
+      model-trainer:
+        condition: service_completed_successfully
+      mlflow-server:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: luxury_watch_frontend
+    ports:
+      - "5173:80"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    networks:
+      - watch_network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mlflow_db_data:
+    name: luxury_watch_mlflow_db_data_v2
+  mlflow_artifacts:
+    name: luxury_watch_mlflow_artifacts_v2
+  models_data:
+    name: luxury_watch_models_data_v2
+
+networks:
+  watch_network:
+    name: luxury_watch_network_v2
+    driver: bridge
